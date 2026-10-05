@@ -64,6 +64,19 @@ npm run tauri build    # сборка .exe (bundle → src-tauri/target/release/
 }
 ```
 
+## 🚀 Публикация на GitHub
+
+1. Создай **пустой** репозиторий на GitHub (без README и `.gitignore`).
+2. Запусти скрипт `push-to-github.sh`, передав URL репозитория аргументом:
+
+```bash
+bash push-to-github.sh https://github.com/talifan11/valheim-rouge.git
+# или по SSH:
+bash push-to-github.sh git@github.com:talifan11/valheim-rouge.git
+```
+
+Скрипт сам сделает коммит, настроит `origin`, переименует ветку в `main` и выполнит `git push -u origin main`.
+
 ## Дальше (Фаза 2)
 
 * Реальная авторизация по playit.gg-туннелю и генерация join-ссылки
