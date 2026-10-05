@@ -1,5 +1,6 @@
 # Compressed archives
-*.tar.gznode_modules/
+*.tar.gz
+node_modules/
 .next/
 dist/
 build/
