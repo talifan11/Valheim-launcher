@@ -5,7 +5,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 
-/* ---------- Кнопка (аналог components/ui/button) ---------- */
+/* Кнопка (аналог components/ui/button) */
 
 type ButtonVariant = 'primary' | 'ghost' | 'play';
 
@@ -33,7 +33,7 @@ export const VRButton = forwardRef<HTMLButtonElement, VRButtonProps>(
 );
 VRButton.displayName = 'VRButton';
 
-/* ---------- Glassmorphism-карточка (аналог components/ui/card) ---------- */
+/* Glassmorphism-карточка (аналог components/ui/card) */
 
 interface VRCardProps {
   children: ReactNode;
@@ -44,7 +44,7 @@ export function VRCard({ children, className = '' }: VRCardProps) {
   return <div className={`vr-glass ${className}`}>{children}</div>;
 }
 
-/* ---------- Модальное окно (аналог components/ui/dialog) ---------- */
+/* Модальное окно (аналог components/ui/dialog) */
 
 interface VRModalProps {
   /** Показывать ли модалку (управляет AnimatePresence) */
