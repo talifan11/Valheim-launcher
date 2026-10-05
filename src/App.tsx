@@ -1,7 +1,5 @@
-// ============================================================
 // App — корневой компонент: TitleBar + переключение экранов
 // (Login/Main) через AnimatePresence + глобальная модалка ошибок.
-// ============================================================
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';

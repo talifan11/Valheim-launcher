@@ -1,8 +1,6 @@
-// ============================================================
 // LoginScreen — экран аутентификации (заглушка по п. 3.2 ТЗ):
 // glassmorphism-карточка, анимированные поля, «битвовая» кнопка входа.
 // Логика: оба поля непустые -> главный экран; иначе -> анимированная ошибка.
-// ============================================================
 import { useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Eye, EyeOff, Lock, Swords, User } from 'lucide-react';

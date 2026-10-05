@@ -1,8 +1,6 @@
-// ============================================================
 // SettingsModal — экран настроек (п. 3.5 ТЗ):
 // выбор папки с игрой через нативный диалог Tauri + ручной ввод пути.
 // Всё сохраняется в config.json немедленно при закрытии.
-// ============================================================
 import { useEffect, useState, type ReactNode } from 'react';
 import { FolderOpen, Gamepad2 } from 'lucide-react';
 import { VRButton, VRModal } from './ui';

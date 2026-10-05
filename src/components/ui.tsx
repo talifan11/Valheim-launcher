@@ -1,8 +1,6 @@
-// ============================================================
 // UI-кит: переиспользуемые примитивы в стиле Battle.net.
 // В исходном репозитории это были компоненты ui/button, ui/card,
 // ui/dialog — здесь их упрощённые, но типизированные аналоги.
-// ============================================================
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';

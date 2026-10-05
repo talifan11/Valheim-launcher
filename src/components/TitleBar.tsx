@@ -1,8 +1,6 @@
-// ============================================================
-// TitleBar — кастомная шапка окна (дефолтная рамка Windows отключена
-// через "decorations": false в tauri.conf.json).
-// Перетаскивание — через data-tauri-drag-region, кнопки — через window API.
-// ============================================================
+// Кастомная шапка окна: дефолтная рамка Windows отключена через
+// "decorations": false в tauri.conf.json.
+// Перетаскивание — data-tauri-drag-region, кнопки — через window API.
 import { LogOut, Maximize2, Minus, Settings, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '../lib/api';
