@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+*.log
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Иде
+.vscode/
+.idea/
+
+# Артефакты сборки лаунчера
+*.exe
+*.msi
+*.dmg
+*.AppImage
+
+# Локальные файлы
+.env
+.env.local
+.DS_Store
+Thumbs.db
+
+# Временные файлы Qwen и кэш
+*.tar.gz
+*.tar.gz.b64
+*.bundle
+push-to-github.sh
+restore-valheim-rouge.sh
+.github_pr_body.md
+tsconfig.tsbuildinfo
