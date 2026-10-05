@@ -106,9 +106,12 @@ body::before {
     border-color: rgba(74, 158, 255, 0.15);
   }
 
-  /* Лента новостей: скроллящийся столбец карточек с зазором 16px */
+  /* Лента новостей: скроллящийся столбец карточек с зазором 16px.
+     scrollbar-width/color — для Firefox, webkit-правила ниже — для WebView2 */
   .vr-news-feed {
     @apply flex flex-col gap-4 overflow-y-auto pr-2 pb-2;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(74, 158, 255, 0.4) transparent;
   }
 
   /* Карточка новости: glass-фон, картинка слева, контент справа */
@@ -133,10 +136,13 @@ body::before {
   .vr-news-card:hover .vr-news-media img {
     transform: scale(1.05);
   }
-  /* Fallback, если jpg отсутствует — градиентный плейсхолдер */
+  /* Fallback, если jpg отсутствует: градиентный плейсхолдер с иконкой по центру */
   .vr-news-placeholder {
-    @apply h-full w-full;
+    @apply flex h-full w-full items-center justify-center;
     background: linear-gradient(135deg, #1a2333, #0a0e14);
+  }
+  .vr-news-placeholder svg {
+    @apply text-slate-600;
   }
 
   /* Текстовый блок карточки */
@@ -166,9 +172,12 @@ body::before {
     @apply bg-blizzard text-black;
   }
 
-  /* Правая колонка: три блока + кнопки внизу */
+  /* Правая колонка: три блока + кнопки внизу.
+     Скроллбар тонкий и тёмно-синий (Firefox-часть) */
   .vr-side {
     @apply flex min-h-0 flex-col gap-4 overflow-y-auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(74, 158, 255, 0.4) transparent;
   }
   .vr-side-block {
     @apply shrink-0 p-5;
@@ -177,24 +186,36 @@ body::before {
     @apply mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a95a5];
   }
 
-  /* Прямоугольная кнопка ИГРАТЬ: золото во всю ширину колонки */
+  /* Прямоугольная кнопка ИГРАТЬ: золото во всю ширину колонки.
+     Компактная (56px), чтобы не доминировать над контентом */
   .vr-play-btn {
-    @apply flex h-16 w-full items-center justify-center rounded-lg font-display
-           text-[22px] font-bold uppercase tracking-[0.15em] text-[#0a0e14]
+    @apply flex h-14 w-full items-center justify-center rounded-md font-display
+           text-[18px] font-semibold uppercase tracking-[0.15em] text-[#0a0e14]
            transition-all duration-300 cursor-pointer;
-    background: linear-gradient(180deg, #e3c055 0%, #d4af37 55%, #b8941f 100%);
-    box-shadow: 0 4px 24px rgba(212, 175, 55, 0.3);
+    background: linear-gradient(180deg, #d4af37 0%, #b8941f 100%);
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.25);
   }
   .vr-play-btn:hover:not(:disabled) {
-    box-shadow: 0 6px 32px rgba(212, 175, 55, 0.5);
+    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
     filter: brightness(1.05);
+  }
+  .vr-play-btn:active:not(:disabled) {
+    transform: translateY(0);
   }
   .vr-play-btn:disabled {
     @apply cursor-not-allowed;
   }
-  /* Сервер недоступен: кнопка тускнеет, но остаётся кликабельной */
-  .vr-play-btn-dim {
-    @apply opacity-60;
+  /* Сервер недоступен: кнопка приглушена, тёмная, без тени и свечения */
+  .vr-play-btn-offline {
+    @apply border text-[#6a7585];
+    background: linear-gradient(180deg, #2a2f38 0%, #1a1f28 100%);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+  }
+  .vr-play-btn-offline:hover:not(:disabled) {
+    box-shadow: none;
+    filter: none;
+    transform: none;
   }
 
   /* Ghost-кнопка «Настройки» под ИГРАТЬ */
@@ -242,19 +263,31 @@ body::before {
     @apply border-blizzard shadow-glow-blue bg-steel;
   }
 
-  /* Тонкая прокрутка в ленте новостей и модалках: тёмно-синий thumb */
-  .vr-scroll::-webkit-scrollbar {
+  /* Тонкая прокрутка: тёмно-синий thumb, прозрачный трек.
+         width 6px, контент не перекрывает. Chrome/Edge/WebView2 */
+  .vr-scroll::-webkit-scrollbar,
+  .vr-news-feed::-webkit-scrollbar,
+  .vr-side::-webkit-scrollbar {
     width: 6px;
   }
-  .vr-scroll::-webkit-scrollbar-track {
+
+  .vr-scroll::-webkit-scrollbar-track,
+  .vr-news-feed::-webkit-scrollbar-track,
+  .vr-side::-webkit-scrollbar-track {
     background: transparent;
   }
-  .vr-scroll::-webkit-scrollbar-thumb {
+
+  .vr-scroll::-webkit-scrollbar-thumb,
+  .vr-news-feed::-webkit-scrollbar-thumb,
+  .vr-side::-webkit-scrollbar-thumb {
     background: rgba(74, 158, 255, 0.25);
-    border-radius: 9999px;
+    border-radius: 3px;
   }
-  .vr-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(74, 158, 255, 0.45);
+
+  .vr-scroll::-webkit-scrollbar-thumb:hover,
+  .vr-news-feed::-webkit-scrollbar-thumb:hover,
+  .vr-side::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 158, 255, 0.5);
   }
 }
 
