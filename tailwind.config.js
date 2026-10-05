@@ -25,6 +25,7 @@ export default {
       fontFamily: {
         display: ['Cinzel', 'serif'],       // заголовки — эпичный «фэнтезийный» шрифт
         body: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'], // адрес сервера, стат-цифры
       },
       boxShadow: {
         'glow-blue': '0 0 24px rgba(14, 156, 255, 0.35)',

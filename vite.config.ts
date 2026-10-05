@@ -9,6 +9,11 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    // Windows: без этого Vite и Cargo одновременно лезут в src-tauri/target
+    // и сборка падает с EBUSY: resource busy or locked
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
   },
   build: {
     target: 'esnext',

@@ -1,12 +1,7 @@
-// ============================================================
-// Права доступа (capabilities) для фронтенда — модель безопасности Tauri v2.
-// Разрешаем ровно то, что нужно UI: управление своим окном (кастомная
-// шапка!) и диалог выбора папки в настройках.
-// ============================================================
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Базовые права лаунчера: окно + диалоги",
+  "description": "Base launcher permissions: custom window controls and folder picker dialog",
   "windows": ["main"],
   "permissions": [
     "core:default",

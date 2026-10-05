@@ -2,12 +2,12 @@
 // App — корневой компонент: TitleBar + переключение экранов
 // (Login ⇄ Main) через AnimatePresence + глобальная модалка ошибок.
 // ============================================================
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { LoginScreen } from './components/LoginScreen';
-import { MainScreen } from './components/MainScreen';
+import { MainScreen } from './screens/MainScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { VRButton, VRModal } from './components/ui';
 import { useLauncherStore } from './store/useLauncherStore';
@@ -17,7 +17,8 @@ export default function App() {
   const errorMessage = useLauncherStore((s) => s.errorMessage);
   const dismissError = useLauncherStore((s) => s.dismissError);
   const loadConfig = useLauncherStore((s) => s.loadConfig);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsOpen = useLauncherStore((s) => s.settingsOpen);
+  const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
 
   // При старте читаем config.json из Rust-бэкенда (п. 3.5 ТЗ).
   // Если пользователь уже сохранён — сразу пускаем внутрь без логина?
@@ -35,7 +36,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {isAuthenticated ? (
             <motion.div key="main" className="absolute inset-0">
-              <MainScreen onOpenSettings={() => setSettingsOpen(true)} />
+              <MainScreen />
             </motion.div>
           ) : (
             <motion.div key="login" className="absolute inset-0">

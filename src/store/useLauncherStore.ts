@@ -16,9 +16,13 @@ interface LauncherState {
   isLaunching: boolean;
   /** Текст ошибки для модалки (null — ошибок нет) */
   errorMessage: string | null;
+  /** Открыт ли экран настроек (управляется из стора, чтобы кнопка в правой колонке работала без пропсов) */
+  settingsOpen: boolean;
 
   /** Загрузить конфиг из Rust-бэкенда при старте приложения */
   loadConfig: () => Promise<void>;
+  /** Открыть / закрыть модалку настроек */
+  setSettingsOpen: (open: boolean) => void;
   /** Логин-заглушка: непустые поля → главный экран + сохранение username */
   login: (username: string) => Promise<void>;
   /** Выход: возврат к экрану входа */
@@ -36,6 +40,9 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   isAuthenticated: false,
   isLaunching: false,
   errorMessage: null,
+  settingsOpen: false,
+
+  setSettingsOpen: (open: boolean) => set({ settingsOpen: open }),
 
   loadConfig: async () => {
     try {

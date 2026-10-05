@@ -24,7 +24,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
     <header
       // data-tauri-drag-region позволяет тянуть окно за любую область шапки (п. 3.1 ТЗ)
       data-tauri-drag-region
-      className="relative z-40 flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-panel/70 backdrop-blur-md px-3"
+      className="relative z-40 flex h-12 shrink-0 items-center justify-between border-b bg-panel/70 backdrop-blur-md px-3 vr-titlebar-line"
     >
       {/* Логотип слева */}
       <div className="flex items-center gap-2 pl-2 select-none">
