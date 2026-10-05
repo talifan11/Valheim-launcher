@@ -1,0 +1,6 @@
+# Compressed archives
+*.tar.gznode_modules/
+.next/
+dist/
+build/
+*.log

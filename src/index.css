@@ -1,0 +1,266 @@
+/* ============================================================
+   Valheim Rouge — базовый CSS-кит (шрифты, палитра, утилиты)
+   Стилистика: Battle.net / Blizzard — тёмная тема + glassmorphism
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Эпический «фэнтезийный» шрифт для заголовков и «чистый» Inter для UI.
+   В offline-сборке Tauri можно заменить на локальные woff2-файлы из assets. */
+:root {
+  /* Палитра продублирована в tailwind.config.js — здесь она нужна
+     для градиентов и теней внутри @layer-компонентов */
+  --clr-bg: #05070d;
+  --clr-accent: #0e9cff;
+  --clr-gold: #ffc24b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-abyss text-slate-200 font-body antialiased;
+  /* Фоновая «картина»: атмосферный пейзаж из public/backgrounds, если пользователь
+     его положил. Если файла нет — браузер тихо игнорирует слой и остаются градиенты */
+  background-image:
+    linear-gradient(135deg, rgba(10, 14, 20, 0.85) 0%, rgba(10, 14, 20, 0.95) 100%),
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14, 156, 255, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255, 194, 75, 0.06), transparent),
+    radial-gradient(ellipse 50% 60% at 10% 100%, rgba(47, 191, 113, 0.05), transparent),
+    radial-gradient(ellipse at top left, #1a2333 0%, #0a0e14 60%);
+  background-size: cover, auto, auto, auto, auto;
+  background-position: center, center, center, center, center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  user-select: none; /* интерфейс лаунчера не должен «текстовыделяться» */
+}
+
+/* Подключаем реальную картинку фона отдельным слоем: если /backgrounds/main.jpg
+   отсутствует, правило просто не сработает и останется CSS-градиент выше */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('/backgrounds/main.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+@layer components {
+  /* ---- Glassmorphism-карточка: полупрозрачность + размытие backdrop ---- */
+  .vr-glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ---- Кнопка в стиле Blizzard: градиент + свечение при наведении ---- */
+  .vr-btn-primary {
+    @apply relative px-6 py-3 rounded-lg font-semibold tracking-wide text-white
+           transition-all duration-300 cursor-pointer select-none;
+    background: linear-gradient(180deg, #1aa7ff 0%, #0a6fc2 100%);
+    border: 1px solid rgba(120, 200, 255, 0.35);
+  }
+  .vr-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 24px rgba(14, 156, 255, 0.55);
+    filter: brightness(1.12);
+  }
+  .vr-btn-primary:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  /* ---- Золотая «легендарная» кнопка ИГРАТЬ (круглая, из старой версии —
+         больше не используется на главном экране, оставлена для модалок) ---- */
+  .vr-btn-play {
+    @apply relative font-display font-bold uppercase tracking-[0.3em] text-black
+           rounded-lg transition-all duration-300 cursor-pointer;
+    background: linear-gradient(180deg, #ffd97a 0%, #f2a93b 55%, #c98f1e 100%);
+    border: 1px solid rgba(255, 225, 150, 0.6);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .vr-btn-play:hover:not(:disabled) {
+    box-shadow: 0 0 36px rgba(255, 194, 75, 0.6);
+  }
+  .vr-btn-play:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  /* ============ РЕДИЗАЙН: двухколоночный главный экран ============ */
+
+  /* Сетка layout: новости 65% / панель 35%, зазор 24px, поля 32px */
+  .vr-main-grid {
+    @apply grid flex-1 min-h-0 px-8 py-4;
+    grid-template-columns: 65fr 35fr;
+    gap: 24px;
+  }
+
+  /* Разделитель под title bar — тонкая синяя линия */
+  .vr-titlebar-line {
+    border-color: rgba(74, 158, 255, 0.15);
+  }
+
+  /* Лента новостей: скроллящийся столбец карточек с зазором 16px */
+  .vr-news-feed {
+    @apply flex flex-col gap-4 overflow-y-auto pr-2 pb-2;
+  }
+
+  /* Карточка новости: glass-фон, картинка слева, контент справа */
+  .vr-news-card {
+    @apply flex h-[200px] shrink-0 overflow-hidden rounded-xl border border-white/5;
+    background: rgba(20, 25, 35, 0.6);
+    backdrop-filter: blur(16px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .vr-news-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Картинка новости: 40% ширины, скругление только правых углов */
+  .vr-news-media {
+    @apply relative w-[40%] shrink-0 overflow-hidden rounded-r-xl;
+  }
+  .vr-news-media img {
+    @apply h-full w-full object-cover transition-transform duration-[400ms];
+  }
+  .vr-news-card:hover .vr-news-media img {
+    transform: scale(1.05);
+  }
+  /* Fallback, если jpg отсутствует — градиентный плейсхолдер */
+  .vr-news-placeholder {
+    @apply h-full w-full;
+    background: linear-gradient(135deg, #1a2333, #0a0e14);
+  }
+
+  /* Текстовый блок карточки */
+  .vr-news-body {
+    @apply flex min-w-0 flex-1 flex-col justify-center gap-2 p-6;
+  }
+  .vr-news-date {
+    @apply text-[11px] uppercase tracking-[0.1em] text-slate-400;
+  }
+  .vr-news-title {
+    @apply font-display text-[22px] font-semibold leading-snug text-[#e8eef5];
+  }
+  .vr-news-desc {
+    @apply text-sm leading-[1.6] text-[#a5b0c0];
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Маленькая ghost-кнопка «Читать» */
+  .vr-btn-ghost-sm {
+    @apply mt-1 self-start rounded-md border border-blizzard px-3 py-1.5 text-xs
+           font-medium text-blizzard transition-colors duration-200 cursor-pointer;
+  }
+  .vr-btn-ghost-sm:hover {
+    @apply bg-blizzard text-black;
+  }
+
+  /* Правая колонка: три блока + кнопки внизу */
+  .vr-side {
+    @apply flex min-h-0 flex-col gap-4 overflow-y-auto;
+  }
+  .vr-side-block {
+    @apply shrink-0 p-5;
+  }
+  .vr-side-label {
+    @apply mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a95a5];
+  }
+
+  /* Прямоугольная кнопка ИГРАТЬ: золото во всю ширину колонки */
+  .vr-play-btn {
+    @apply flex h-16 w-full items-center justify-center rounded-lg font-display
+           text-[22px] font-bold uppercase tracking-[0.15em] text-[#0a0e14]
+           transition-all duration-300 cursor-pointer;
+    background: linear-gradient(180deg, #e3c055 0%, #d4af37 55%, #b8941f 100%);
+    box-shadow: 0 4px 24px rgba(212, 175, 55, 0.3);
+  }
+  .vr-play-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 32px rgba(212, 175, 55, 0.5);
+    filter: brightness(1.05);
+  }
+  .vr-play-btn:disabled {
+    @apply cursor-not-allowed;
+  }
+  /* Сервер недоступен: кнопка тускнеет, но остаётся кликабельной */
+  .vr-play-btn-dim {
+    @apply opacity-60;
+  }
+
+  /* Ghost-кнопка «Настройки» под ИГРАТЬ */
+  .vr-btn-settings {
+    @apply flex h-10 w-full items-center justify-center gap-2 rounded-lg border
+           border-edge text-sm text-slate-300 transition-colors duration-200 cursor-pointer;
+  }
+  .vr-btn-settings:hover {
+    @apply border-blizzard/60 text-white;
+  }
+
+  /* Аватар персонажа: круг с золотым градиентом */
+  .vr-avatar {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-full
+           text-[#0a0e14];
+    background: linear-gradient(135deg, #e3c055, #b8941f);
+  }
+
+  /* Таблица статов персонажа */
+  .vr-stats {
+    @apply mt-4 space-y-1.5;
+  }
+  .vr-stat-row {
+    @apply flex items-center justify-between text-sm;
+  }
+  .vr-stat-row dt {
+    @apply text-slate-500;
+  }
+  .vr-stat-row dd {
+    @apply font-mono text-slate-200;
+  }
+
+  /* Маленькая иконочная кнопка (обновить статус / копировать адрес) */
+  .vr-icon-btn {
+    @apply rounded-md border border-edge p-2 text-slate-400 transition-colors
+           hover:border-blizzard/60 hover:text-white cursor-pointer;
+  }
+
+  /* ---- Поле ввода с плавной анимацией фокуса ---- */
+  .vr-input {
+    @apply w-full px-4 py-3 rounded-lg bg-steel/80 border border-edge text-slate-100
+           placeholder:text-slate-500 outline-none transition-all duration-300;
+  }
+  .vr-input:focus {
+    @apply border-blizzard shadow-glow-blue bg-steel;
+  }
+
+  /* ---- Тонкая прокрутка в ленте новостей и модалках: тёмно-синий thumb ---- */
+  .vr-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .vr-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .vr-scroll::-webkit-scrollbar-thumb {
+    background: rgba(74, 158, 255, 0.25);
+    border-radius: 9999px;
+  }
+  .vr-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 158, 255, 0.45);
+  }
+}
+
+/* Разрешаем выделение только там, где это нужно (адрес сервера) */
+.vr-selectable {
+  user-select: text;
+}
