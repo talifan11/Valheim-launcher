@@ -15,7 +15,7 @@ export interface LauncherConfig {
 /** Конфиг по умолчанию — используется, если config.json отсутствует или повреждён */
 export const DEFAULT_CONFIG: LauncherConfig = {
   game_path: '',
-  server_address: 'pgsql-louisville.tun.ply.gg:21589',
+  server_address: '85.198.70.143:2456',
   username: '',
   theme: 'dark',
 };
