@@ -6,3 +6,4 @@ dist/
 src-tauri/target/
 .github_pr_body.md
 valheim-rouge.bundle
+tsconfig.tsbuildinfo
