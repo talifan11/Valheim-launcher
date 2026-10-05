@@ -1,13 +1,2 @@
-# Compressed archives
-*.tar.gz
-node_modules/
-.next/
-dist/
-build/
-*.log
-# Rust build output
-src-tauri/target/
-
-# Local artifacts (не для репозитория)
-.github_pr_body.md
-valheim-rouge.tar.gz
+#Compressed archives
+*.tar.gz.b64
