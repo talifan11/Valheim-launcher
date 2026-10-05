@@ -4,7 +4,7 @@ import { Play } from 'lucide-react';
 
 interface PlayButtonProps {
   disabled?: boolean;
-  /** Сервер недоступен: кнопка тускнеет и меняет подпись */
+  /** Сервер недоступен: кнопка приглушена и заблокирована */
   serverOffline?: boolean;
   isLaunching: boolean;
   onPlay: () => void;
@@ -13,15 +13,16 @@ interface PlayButtonProps {
 export function PlayButton({ disabled, serverOffline, isLaunching, onPlay }: PlayButtonProps) {
   // Приоритет подписи: запуск > недоступный сервер > игра
   const label = isLaunching ? 'ЗАПУСК…' : serverOffline ? 'СЕРВЕР НЕДОСТУПЕН' : 'ИГРАТЬ';
+  const blocked = Boolean(disabled) || serverOffline || isLaunching;
 
   return (
     <motion.button
       type="button"
       onClick={onPlay}
-      disabled={disabled || isLaunching}
-      whileHover={serverOffline ? undefined : { y: -2 }}
+      disabled={blocked}
+      whileHover={blocked ? undefined : { y: -1 }}
       whileTap={{ y: 0 }}
-      className={`vr-play-btn ${serverOffline ? 'vr-play-btn-dim' : ''}`}
+      className={`vr-play-btn ${serverOffline ? 'vr-play-btn-offline' : ''}`}
     >
       <AnimatePresence mode="wait">
         <motion.span
@@ -30,9 +31,9 @@ export function PlayButton({ disabled, serverOffline, isLaunching, onPlay }: Pla
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.18 }}
-          className="flex items-center gap-3"
+          className="flex items-center gap-2.5"
         >
-          <Play size={20} strokeWidth={2.5} fill="currentColor" />
+          <Play size={16} strokeWidth={2.5} fill="currentColor" />
           {label}
         </motion.span>
       </AnimatePresence>

@@ -23,13 +23,13 @@ interface LauncherState {
   loadConfig: () => Promise<void>;
   /** Открыть / закрыть модалку настроек */
   setSettingsOpen: (open: boolean) => void;
-  /** Логин-заглушка: непустые поля → главный экран + сохранение username */
+  /** Логин-заглушка: непустые поля -> главный экран + сохранение username */
   login: (username: string) => Promise<void>;
   /** Выход: возврат к экрану входа */
   logout: () => void;
   /** Изменить кусок конфига и сразу сохранить на диск */
   updateConfig: (patch: Partial<LauncherConfig>) => Promise<void>;
-  /** Нажатие «ИГРАТЬ»: проверка пути → запуск → сворачивание окна */
+  /** Нажатие «ИГРАТЬ»: проверка пути -> запуск -> сворачивание окна */
   play: () => Promise<void>;
   /** Закрыть модалку ошибки */
   dismissError: () => void;

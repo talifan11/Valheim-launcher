@@ -1,5 +1,6 @@
 // Одна карточка новости: слева картинка (с fallback на градиент), справа текст.
 import { useState } from 'react';
+import { Newspaper } from 'lucide-react';
 import type { NewsItem } from '../data/news';
 
 interface NewsCardProps {
@@ -15,7 +16,9 @@ export function NewsCard({ item }: NewsCardProps) {
       {/* Картинка: 40% ширины, скругление только со стороны контента */}
       <div className="vr-news-media">
         {imageFailed ? (
-          <div className="vr-news-placeholder" aria-hidden="true" />
+          <div className="vr-news-placeholder" aria-hidden="true">
+            <Newspaper size={40} strokeWidth={1.5} />
+          </div>
         ) : (
           <img
             src={`/news/${item.image}.jpg`}

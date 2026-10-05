@@ -3,16 +3,18 @@
 // через "decorations": false в tauri.conf.json).
 // Перетаскивание — через data-tauri-drag-region, кнопки — через window API.
 // ============================================================
-import { Maximize2, Minus, Settings, X } from 'lucide-react';
+import { LogOut, Maximize2, Minus, Settings, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '../lib/api';
 
 interface TitleBarProps {
-  /** Открыть экран настроек (колокольчик-шестерёнка справа) */
+  /** Открыть экран настроек (иконка шестерёнки справа) */
   onOpenSettings: () => void;
+  /** Выйти из аккаунта (иконка LogOut рядом с шестерёнкой) */
+  onLogout: () => void;
 }
 
-export function TitleBar({ onOpenSettings }: TitleBarProps) {
+export function TitleBar({ onOpenSettings, onLogout }: TitleBarProps) {
   const appWindow = getCurrentWindow();
 
   // В браузерной разработке кнопок управления окном нет — не падаем с ошибкой
@@ -36,8 +38,15 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
         </span>
       </div>
 
-      {/* Кнопки справа: настройки + управление окном */}
+      {/* Кнопки справа: выход + настройки + управление окном */}
       <div className="flex items-center gap-1">
+        <button
+          onClick={onLogout}
+          title="Выйти"
+          className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white cursor-pointer"
+        >
+          <LogOut size={18} />
+        </button>
         <button
           onClick={onOpenSettings}
           title="Настройки"

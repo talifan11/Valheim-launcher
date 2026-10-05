@@ -1,15 +1,11 @@
 // Главный экран лаунчера: двухколоночный layout в стиле Battle.net.
 // Слева — лента новостей, справа — панель сервера/персонажа и кнопка ИГРАТЬ.
+// Выход из аккаунта перенесён в TitleBar (иконка LogOut).
 import { motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
 import { NewsFeed } from '../components/NewsFeed';
 import { ServerPanel } from '../components/ServerPanel';
-import { VRButton } from '../components/ui';
-import { useLauncherStore } from '../store/useLauncherStore';
 
 export function MainScreen() {
-  const logout = useLauncherStore((s) => s.logout);
-
   return (
     <motion.div
       // Плавное появление главного экрана после логина
@@ -19,15 +15,6 @@ export function MainScreen() {
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="flex h-full flex-col"
     >
-      {/* Тонкая полоса с выходом: основной выход из аккаунта — здесь,
-          настройки переехали в правую колонку под кнопку ИГРАТЬ */}
-      <div className="flex items-center justify-end px-8 pt-4">
-        <VRButton variant="ghost" onClick={logout} title="Выйти">
-          <LogOut size={15} />
-          <span className="ml-2 text-xs">Выйти</span>
-        </VRButton>
-      </div>
-
       {/* Две колонки: новости 65% / панель управления 35%, зазор 24px, поля 32px */}
       <div className="vr-main-grid">
         <NewsFeed />

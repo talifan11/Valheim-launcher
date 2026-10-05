@@ -1,6 +1,6 @@
 // ============================================================
 // App — корневой компонент: TitleBar + переключение экранов
-// (Login ⇄ Main) через AnimatePresence + глобальная модалка ошибок.
+// (Login/Main) через AnimatePresence + глобальная модалка ошибок.
 // ============================================================
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -19,6 +19,7 @@ export default function App() {
   const loadConfig = useLauncherStore((s) => s.loadConfig);
   const settingsOpen = useLauncherStore((s) => s.settingsOpen);
   const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
+  const logout = useLauncherStore((s) => s.logout);
 
   // При старте читаем config.json из Rust-бэкенда (п. 3.5 ТЗ).
   // Если пользователь уже сохранён — сразу пускаем внутрь без логина?
@@ -29,7 +30,7 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} onLogout={logout} />
 
       <main className="relative flex-1">
         {/* Переключение экранов с анимацией кросс-фейда */}
