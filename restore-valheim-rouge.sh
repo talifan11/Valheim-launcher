@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+# Valheim Rouge - скрипт восстановления проекта из исходников.
+# Запуск: bash restore-valheim-rouge.sh (сначала cd в нужную папку!)
+# package-lock.json намеренно НЕ включён: после восстановления запусти npm install.
+# Иконки src-tauri/icons закоданы base64 внутри скрипта.
+# Сам скрипт копирует себя в проект, поэтому его можно пересобирать без потерь.
+set -e
+
+mkdir -p src/components src/screens src/store src/lib src/data \
+         src-tauri/src src-tauri/capabilities src-tauri/icons \
+         public/backgrounds public/news
+#!/usr/bin/env bash
 # ============================================================
 # Valheim Rouge — скрипт восстановления проекта из исходников.
 # Запуск: bash restore-valheim-rouge.sh
@@ -6,268 +17,6 @@
 # package-lock.json намеренно НЕ включён: после восстановления запусти
 #   npm install   — он сгенерирует лок сам по package.json.
 # Иконки src-tauri/icons/*.png|ico закодированы base64 внутри heredoc.
-# ============================================================
-set -e
-
-mkdir -p src/components src/screens src/store src/lib src/data \
-         src-tauri/src src-tauri/capabilities src-tauri/icons \
-         public/backgrounds public/news
-
-# >>> ФАЙЛ: .gitignore
-cat > '.gitignore' << 'VR_EOF'
-# Сжатые архивы и локальные артефакты
-*.tar.gz
-*.b64
-node_modules/
-dist/
-src-tauri/target/
-.github_pr_body.md
-valheim-rouge.bundle
-tsconfig.tsbuildinfo
-VR_EOF
-
-# >>> ФАЙЛ: README.md
-cat > 'README.md' << 'VR_EOF'
-# ⚔️ Valheim Rouge
-
-Стильный десктопный лаунчер для пиратской сборки Valheim в духе **Battle.net**:
-тёмная тема, glassmorphism, золотая кнопка «ИГРАТЬ» и живой статус нашего сервера
-`pgsql-louisville.tun.ply.gg:21589`.
-
-## Стек (по ТЗ v2.0)
-
-| Слой | Технология |
-|---|---|
-| Оболочка | **Tauri v2** (легче Electron в разы — системный WebView) |
-| Бэкенд | **Rust** (`src-tauri/`) |
-| Фронтенд | **React 18 + TypeScript + Vite** |
-| Стиль | **Tailwind CSS** (палитра Blizzard в `tailwind.config.js` / `src/index.css`) |
-| Анимации | **Framer Motion** |
-| Иконки | **Lucide React** |
-| Состояние | **Zustand** (`src/store/useLauncherStore.ts`) |
-
-## Структура
-
-```
-├── src/                    # React-фронтенд
-│   ├── components/         # TitleBar, LoginScreen, MainScreen, ServerStatus, SettingsModal, ui-кит
-│   ├── store/              # Zustand-стор (конфиг, логин, запуск игры)
-│   ├── lib/api.ts          # типизированная обёртка над Tauri invoke()
-│   └── index.css           # CSS-кит: шрифты, палитра, .vr-glass/.vr-btn-* утилиты
-└── src-tauri/              # Rust-бэкенд
-    ├── src/lib.rs          # сборка приложения, регистрация команд
-    ├── src/commands.rs     # get_config / set_config / check_game_path / launch_game / ping_server
-    ├── src/config.rs       # %APPDATA%/ValheimRouge/config.json
-    └── capabilities/       # права webview (окно + диалоги)
-```
-
-## Команды
-
-```bash
-npm install            # зависимости фронтенда
-npm run dev            # UI в браузере (без Rust-вызовов, для вёрстки)
-npm run tauri dev      # запуск лаунчера «как есть» (нужен Rust toolchain)
-npm run tauri build    # сборка .exe (bundle → src-tauri/target/release/bundle/)
-```
-
-> Для `tauri`-команд нужны: [Rust](https://rustup.rs) и системные зависимости
-> (Windows: WebView2 + MSVC; Linux: `libwebkit2gtk-4.1-dev` и т.п. — см. docs).
-
-## Как это работает
-
-* **Окно без рамки** — `"decorations": false`, шапка с `data-tauri-drag-region`,
-  свои кнопки свернуть/развернуть/закрыть (`TitleBar.tsx`).
-* **Логин-заглушка** — оба поля непустые → внутрь; иначе анимированная ошибка.
-* **PLAY** — Rust проверяет `<game_path>\valheim.exe`, запускает через
-  `std::process::Command` и сворачивает окно лаунчера. Если файла нет — модалка
-  с кнопкой «Выбрать папку» (нативный диалог).
-* **Статус сервера** — честный UDP-пинг протокола Valheim (`SRV~`) из команды
-  `ping_server`, автообновление каждые 15 секунд.
-* **Конфиг** — `%APPDATA%/ValheimRouge/config.json`:
-
-```json
-{
-  "game_path": "Z:\\Путь\\К\\Игре",
-  "server_address": "pgsql-louisville.tun.ply.gg:21589",
-  "username": "",
-  "theme": "dark"
-}
-```
-
-## 🚀 Публикация на GitHub
-
-1. Создай **пустой** репозиторий на GitHub (без README и `.gitignore`).
-2. Запусти скрипт `push-to-github.sh`, передав URL репозитория аргументом:
-
-```bash
-bash push-to-github.sh https://github.com/talifan11/valheim-rouge.git
-# или по SSH:
-bash push-to-github.sh git@github.com:talifan11/valheim-rouge.git
-```
-
-Скрипт сам сделает коммит, настроит `origin`, переименует ветку в `main` и выполнит `git push -u origin main`.
-
-## Дальше (Фаза 2)
-
-* Реальная авторизация по playit.gg-туннелю и генерация join-ссылки
-* Live-карточка сервера: онлайн-игроки, имя мира (расширение `ping_server`)
-* Система обновлений игры через лаунчер
-VR_EOF
-
-# >>> ФАЙЛ: index.html
-cat > 'index.html' << 'VR_EOF'
-<!doctype html>
-<html lang="ru" data-tauri-drag-region>
-  <head>
-    <meta charset="UTF-8" />
-    <!-- Отключаем стандартное выделение текста в UI лаунчера -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Valheim Rouge</title>
-    <!-- Шрифты: Cinzel (заголовки), Inter (UI), JetBrains Mono (адрес сервера) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-VR_EOF
-
-# >>> ФАЙЛ: package.json
-cat > 'package.json' << 'VR_EOF'
-{
-  "name": "valheim-rouge",
-  "private": true,
-  "version": "1.0.0",
-  "description": "Valheim Rouge — стильный десктопный лаунчер для Valheim на Tauri v2",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^2.1.0",
-    "@tauri-apps/plugin-dialog": "^2.8.1",
-    "framer-motion": "^11.11.0",
-    "lucide-react": "^0.451.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zustand": "^5.0.0"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2.1.0",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.2",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.2",
-    "vite": "^5.4.8"
-  }
-}
-VR_EOF
-
-# >>> ФАЙЛ: postcss.config.js
-cat > 'postcss.config.js' << 'VR_EOF'
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-VR_EOF
-
-# >>> ФАЙЛ: public/backgrounds/README.txt
-cat > 'public/backgrounds/README.txt' << 'VR_EOF'
-Положи сюда main.jpg (1920x1080) — атмосферный пейзаж Valheim.
-VR_EOF
-
-# >>> ФАЙЛ: public/news/README.txt
-cat > 'public/news/README.txt' << 'VR_EOF'
-Положи сюда server-launch.jpg, modpack.jpg, event.jpg, rules.jpg, welcome.jpg (600x400).
-VR_EOF
-
-# >>> ФАЙЛ: push-to-github.sh
-cat > 'push-to-github.sh' << 'VR_EOF'
-#!/usr/bin/env bash
-# ============================================================
-# Valheim Rouge — скрипт для отправки репозитория на GitHub
-# ============================================================
-# Использование:
-#   1. Создай пустой репозиторий на GitHub (без README и .gitignore).
-#   2. Замени REPO_URL ниже на адрес своего репозитория, например:
-#        git@github.com:talifan11/valheim-rouge.git   (по SSH)
-#        https://github.com/talifan11/valheim-rouge.git (по HTTPS)
-#   3. Запусти:  bash push-to-github.sh
-# ============================================================
-
-set -e  # Остановка при любой ошибке
-
-# --- Настройки -------------------------------------------------
-REPO_URL="${1:-https://github.com/talifan11/valheim-rouge.git}"
-BRANCH="main"
-COMMIT_MSG="feat: Valheim Rouge v1.0.0 — Tauri лаунчер (React+TS+Tailwind+Framer Motion)"
-# ---------------------------------------------------------------
-
-cd "$(dirname "$0")"
-
-echo "==> Проверяем Git..."
-git --version
-
-# Если это ещё не git-репозиторий — инициализируем
-if [ ! -d .git ]; then
-  echo "==> Инициализация git-репозитория..."
-  git init -b "$BRANCH"
-fi
-
-echo "==> Добавляем все файлы в индекс..."
-git add -A
-
-# Коммитим только если есть незакоммиченные изменения
-if ! git diff --cached --quiet; then
-  echo "==> Создаём коммит..."
-  git commit -m "$COMMIT_MSG"
-else
-  echo "==> Новых изменений нет, пропускаем коммит."
-fi
-
-echo "==> Устанавливаем ветку $BRANCH..."
-git branch -M "$BRANCH"
-
-# Настраиваем/обновляем remote origin
-if git remote get-url origin >/dev/null 2>&1; then
-  echo "==> Обновляем существующий remote 'origin'..."
-  git remote set-url origin "$REPO_URL"
-else
-  echo "==> Добавляем remote 'origin': $REPO_URL"
-  git remote add origin "$REPO_URL"
-fi
-
-echo "==> Отправляем на GitHub..."
-git push -u origin "$BRANCH"
-
-echo ""
-echo "✅ Готово! Репозиторий отправлен: $REPO_URL"
-echo "   Дальнейшие изменения: git add -A && git commit -m '...' && git push"
-VR_EOF
-
-# >>> ФАЙЛ: restore-valheim-rouge.sh
-cat > 'restore-valheim-rouge.sh' << 'VR_EOF'
-#!/usr/bin/env bash
-# ============================================================
-# Valheim Rouge — скрипт восстановления проекта из исходников.
-# Запуск: bash restore-valheim-rouge.sh
-# Создаёт все файлы в текущей директории (cd в нужную папку сначала!).
-# package-lock.json намеренно НЕ включён: после восстановления запусти
-#   npm install   — он сгенерирует лок сам по package.json.
 # ============================================================
 set -e
 
@@ -520,6 +269,7 @@ echo ""
 echo "✅ Готово! Репозиторий отправлен: $REPO_URL"
 echo "   Дальнейшие изменения: git add -A && git commit -m '...' && git push"
 VR_EOF
+
 
 echo '>>> src-tauri/Cargo.toml'
 cat > 'src-tauri/Cargo.toml' << 'VR_EOF'
@@ -2375,9 +2125,284 @@ export default defineConfig({
 });
 VR_EOF
 
+
+
+echo '>>> restore-valheim-rouge.sh'
+cat > 'restore-valheim-rouge.sh' << \VR_SELF_EOF
+#!/usr/bin/env bash
+# Valheim Rouge - скрипт восстановления проекта из исходников.
+# Запуск: bash restore-valheim-rouge.sh (сначала cd в нужную папку!)
+# package-lock.json намеренно НЕ включён: после восстановления запусти npm install.
+# Иконки src-tauri/icons закоданы base64 внутри скрипта.
+# Сам скрипт копирует себя в проект, поэтому его можно пересобирать без потерь.
+set -e
+
+mkdir -p src/components src/screens src/store src/lib src/data \\
+         src-tauri/src src-tauri/capabilities src-tauri/icons \\
+         public/backgrounds public/news
+#!/usr/bin/env bash
+# ============================================================
+# Valheim Rouge — скрипт восстановления проекта из исходников.
+# Запуск: bash restore-valheim-rouge.sh
+# Создаёт все файлы в текущей директории (сначала cd в нужную папку!).
+# package-lock.json намеренно НЕ включён: после восстановления запусти
+#   npm install   — он сгенерирует лок сам по package.json.
+# Иконки src-tauri/icons/*.png|ico закодированы base64 внутри heredoc.
+# ============================================================
+set -e
+
+mkdir -p src/components src/screens src/store src/lib src/data \\
+         src-tauri/src src-tauri/capabilities src-tauri/icons \\
+         public/backgrounds public/news
+
+echo '>>> .gitignore'
+cat > '.gitignore' << 'VR_EOF'
+# Сжатые архивы и локальные артефакты
+*.tar.gz
+*.b64
+node_modules/
+dist/
+src-tauri/target/
+.github_pr_body.md
+valheim-rouge.bundle
+tsconfig.tsbuildinfo
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/Cargo.toml
+echo '>>> README.md'
+cat > 'README.md' << 'VR_EOF'
+# ⚔️ Valheim Rouge
+
+Стильный десктопный лаунчер для пиратской сборки Valheim в духе **Battle.net**:
+тёмная тема, glassmorphism, золотая кнопка «ИГРАТЬ» и живой статус нашего сервера
+\`pgsql-louisville.tun.ply.gg:21589\`.
+
+## Стек (по ТЗ v2.0)
+
+| Слой | Технология |
+|---|---|
+| Оболочка | **Tauri v2** (легче Electron в разы — системный WebView) |
+| Бэкенд | **Rust** (\`src-tauri/\`) |
+| Фронтенд | **React 18 + TypeScript + Vite** |
+| Стиль | **Tailwind CSS** (палитра Blizzard в \`tailwind.config.js\` / \`src/index.css\`) |
+| Анимации | **Framer Motion** |
+| Иконки | **Lucide React** |
+| Состояние | **Zustand** (\`src/store/useLauncherStore.ts\`) |
+
+## Структура
+
+\`\`\`
+├── src/                    # React-фронтенд
+│   ├── components/         # TitleBar, LoginScreen, MainScreen, ServerStatus, SettingsModal, ui-кит
+│   ├── store/              # Zustand-стор (конфиг, логин, запуск игры)
+│   ├── lib/api.ts          # типизированная обёртка над Tauri invoke()
+│   └── index.css           # CSS-кит: шрифты, палитра, .vr-glass/.vr-btn-* утилиты
+└── src-tauri/              # Rust-бэкенд
+    ├── src/lib.rs          # сборка приложения, регистрация команд
+    ├── src/commands.rs     # get_config / set_config / check_game_path / launch_game / ping_server
+    ├── src/config.rs       # %APPDATA%/ValheimRouge/config.json
+    └── capabilities/       # права webview (окно + диалоги)
+\`\`\`
+
+## Команды
+
+\`\`\`bash
+npm install            # зависимости фронтенда
+npm run dev            # UI в браузере (без Rust-вызовов, для вёрстки)
+npm run tauri dev      # запуск лаунчера «как есть» (нужен Rust toolchain)
+npm run tauri build    # сборка .exe (bundle → src-tauri/target/release/bundle/)
+\`\`\`
+
+> Для \`tauri\`-команд нужны: [Rust](https://rustup.rs) и системные зависимости
+> (Windows: WebView2 + MSVC; Linux: \`libwebkit2gtk-4.1-dev\` и т.п. — см. docs).
+
+## Как это работает
+
+* **Окно без рамки** — \`"decorations": false\`, шапка с \`data-tauri-drag-region\`,
+  свои кнопки свернуть/развернуть/закрыть (\`TitleBar.tsx\`).
+* **Логин-заглушка** — оба поля непустые → внутрь; иначе анимированная ошибка.
+* **PLAY** — Rust проверяет \`<game_path>\\valheim.exe\`, запускает через
+  \`std::process::Command\` и сворачивает окно лаунчера. Если файла нет — модалка
+  с кнопкой «Выбрать папку» (нативный диалог).
+* **Статус сервера** — честный UDP-пинг протокола Valheim (\`SRV~\`) из команды
+  \`ping_server\`, автообновление каждые 15 секунд.
+* **Конфиг** — \`%APPDATA%/ValheimRouge/config.json\`:
+
+\`\`\`json
+{
+  "game_path": "Z:\\\\Путь\\\\К\\\\Игре",
+  "server_address": "pgsql-louisville.tun.ply.gg:21589",
+  "username": "",
+  "theme": "dark"
+}
+\`\`\`
+
+## 🚀 Публикация на GitHub
+
+1. Создай **пустой** репозиторий на GitHub (без README и \`.gitignore\`).
+2. Запусти скрипт \`push-to-github.sh\`, передав URL репозитория аргументом:
+
+\`\`\`bash
+bash push-to-github.sh https://github.com/talifan11/valheim-rouge.git
+# или по SSH:
+bash push-to-github.sh git@github.com:talifan11/valheim-rouge.git
+\`\`\`
+
+Скрипт сам сделает коммит, настроит \`origin\`, переименует ветку в \`main\` и выполнит \`git push -u origin main\`.
+
+## Дальше (Фаза 2)
+
+* Реальная авторизация по playit.gg-туннелю и генерация join-ссылки
+* Live-карточка сервера: онлайн-игроки, имя мира (расширение \`ping_server\`)
+* Система обновлений игры через лаунчер
+VR_EOF
+
+echo '>>> index.html'
+cat > 'index.html' << 'VR_EOF'
+<!doctype html>
+<html lang="ru" data-tauri-drag-region>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Отключаем стандартное выделение текста в UI лаунчера -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Valheim Rouge</title>
+    <!-- Шрифты: Cinzel (заголовки), Inter (UI), JetBrains Mono (адрес сервера) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+VR_EOF
+
+echo '>>> package.json'
+cat > 'package.json' << 'VR_EOF'
+{
+  "name": "valheim-rouge",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Valheim Rouge — стильный десктопный лаунчер для Valheim на Tauri v2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.1.0",
+    "@tauri-apps/plugin-dialog": "^2.8.1",
+    "framer-motion": "^11.11.0",
+    "lucide-react": "^0.451.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}
+VR_EOF
+
+echo '>>> postcss.config.js'
+cat > 'postcss.config.js' << 'VR_EOF'
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+VR_EOF
+
+echo '>>> public/backgrounds/README.txt'
+cat > 'public/backgrounds/README.txt' << 'VR_EOF'
+Положи сюда main.jpg (1920x1080) — атмосферный пейзаж Valheim.
+VR_EOF
+
+echo '>>> public/news/README.txt'
+cat > 'public/news/README.txt' << 'VR_EOF'
+Положи сюда server-launch.jpg, modpack.jpg, event.jpg, rules.jpg, welcome.jpg (600x400).
+VR_EOF
+
+echo '>>> push-to-github.sh'
+cat > 'push-to-github.sh' << 'VR_EOF'
+#!/usr/bin/env bash
+# ============================================================
+# Valheim Rouge — скрипт для отправки репозитория на GitHub
+# ============================================================
+# Использование:
+#   1. Создай пустой репозиторий на GitHub (без README и .gitignore).
+#   2. Замени REPO_URL ниже на адрес своего репозитория, например:
+#        git@github.com:talifan11/valheim-rouge.git   (по SSH)
+#        https://github.com/talifan11/valheim-rouge.git (по HTTPS)
+#   3. Запусти:  bash push-to-github.sh
+# ============================================================
+
+set -e  # Остановка при любой ошибке
+
+# --- Настройки -------------------------------------------------
+REPO_URL="\${1:-https://github.com/talifan11/valheim-rouge.git}"
+BRANCH="main"
+COMMIT_MSG="feat: Valheim Rouge v1.0.0 — Tauri лаунчер (React+TS+Tailwind+Framer Motion)"
+# ---------------------------------------------------------------
+
+cd "\$(dirname "\$0")"
+
+echo "==> Проверяем Git..."
+git --version
+
+# Если это ещё не git-репозиторий — инициализируем
+if [ ! -d .git ]; then
+  echo "==> Инициализация git-репозитория..."
+  git init -b "\$BRANCH"
+fi
+
+echo "==> Добавляем все файлы в индекс..."
+git add -A
+
+# Коммитим только если есть незакоммиченные изменения
+if ! git diff --cached --quiet; then
+  echo "==> Создаём коммит..."
+  git commit -m "\$COMMIT_MSG"
+else
+  echo "==> Новых изменений нет, пропускаем коммит."
+fi
+
+echo "==> Устанавливаем ветку \$BRANCH..."
+git branch -M "\$BRANCH"
+
+# Настраиваем/обновляем remote origin
+if git remote get-url origin >/dev/null 2>&1; then
+  echo "==> Обновляем существующий remote 'origin'..."
+  git remote set-url origin "\$REPO_URL"
+else
+  echo "==> Добавляем remote 'origin': \$REPO_URL"
+  git remote add origin "\$REPO_URL"
+fi
+
+echo "==> Отправляем на GitHub..."
+git push -u origin "\$BRANCH"
+
+echo ""
+echo "✅ Готово! Репозиторий отправлен: \$REPO_URL"
+echo "   Дальнейшие изменения: git add -A && git commit -m '...' && git push"
+VR_EOF
+
+
+echo '>>> src-tauri/Cargo.toml'
 cat > 'src-tauri/Cargo.toml' << 'VR_EOF'
 [package]
 name = "valheim-rouge"
@@ -2406,7 +2431,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/build.rs
+echo '>>> src-tauri/build.rs'
 cat > 'src-tauri/build.rs' << 'VR_EOF'
 fn main() {
     // Стандартный сборочный скрипт Tauri: генерирует иконки/компилирует ресурсы.
@@ -2414,10 +2439,10 @@ fn main() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/capabilities/default.json
+echo '>>> src-tauri/capabilities/default.json'
 cat > 'src-tauri/capabilities/default.json' << 'VR_EOF'
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
+  "\$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Base launcher permissions: custom window controls and folder picker dialog",
   "windows": ["main"],
@@ -2432,32 +2457,32 @@ cat > 'src-tauri/capabilities/default.json' << 'VR_EOF'
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/icons/128x128.png
+echo '>>> src-tauri/icons/128x128.png'
 base64 -d > 'src-tauri/icons/128x128.png' << 'VR_EOF_B64'
 iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAC4klEQVR42u3d7UfdYRzH8Z6kR/UvJJlEMknMJBlJkjFJEpmZRJJk9E9kpiQl02TJLKmOdCOnjnSjW91qZpakJCUpk9OjnqTWzbN+7/eDzx9wrs/Lcc7vd13fKyY2Lj7GcOMiCMBFEIARgBGAEYARgBGAEYARgBGAEYARgBGAEYARgBGAEYARQICS0BaNCgBc/nUEAC6fjABf/kBjIhoBvvzQ5yQ0Anz5Q1+S0Qjw5Q83vUAjwJc/0pyCRoAvf6wlFY0AX/54axoaAb78cFs6GgG+/In2l2gE+PIjHRloBPjyp75mohHgy5/uzEIjwJc/8+0VGgG+/Lmu12gE+PLnv2ejEeDLX+jOQSPAl7/Uk4tGgC9/5ccbNAJ8+as/89AI8OWv9eajEeDL3+grQCPAl7/VX4hGgC9/e7AIjQBf/q/QWzQCfPm/h96hEeDL/zNcjEaAL//vaAkaAb78nbFSNAJ8+bvjZWgE+PL3wuVoBPjy9ycr0Ajw5R9E3qMR4Ms/nPqARoAv/2j6IxoBvvzj2Uo0Anz5J3NVaAT48k/nq9EI8OWfLdagEeDLP1+uRSPAl3+xUodGgC//32o9GgG+/Mv1T2gE+PKjmw1oBH4D+A3gbwB/A/gvwH8BPgfwOYBPAn0S6LsA3wX4NtC3ge4HcD+AO4LcEeSeQPcEuivYXcGeC/BcgCeDPBnk2UDPBno62NPBzgdwPoATQpwQ4owgZwQ5JcwpYc4JdE6gk0KdFOqsYGcFOy3caeHeF+B9Ad4Y4o0h3hnknUHeGuatYd4bKABvDhWAdwcL4Bkh8PZwOAJq+YED8FQE1PIDCeApCKjlBxbAYxFQyw80gMcgoJYfeAAPRUAtHwHgIQio5WMA3IeAWj4KwP8QUMvHAbgLAbV8JIDbEFDLxwK4iYBaPhrATQTUNUADuEZA/vx4APS4CAJwEQRgBGAEYARgBGAEYARgBGAEYARgBGAEYARgBGAEYAKWK/RzEPlxTcqCAAAAAElFTkSuQmCC
 VR_EOF_B64
 
-# >>> ФАЙЛ: src-tauri/icons/128x128@2x.png
+echo '>>> src-tauri/icons/128x128@2x.png'
 base64 -d > 'src-tauri/icons/128x128@2x.png' << 'VR_EOF_B64'
 iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAGlElEQVR42u3dxQ6cZQCG0W4IK7gFXINrcA2uwaEQXINruAncixYrbnUoUHdvoUDRYsW9aFkRQrAuCc9ZPDfwZd6TycwvA1ZaeZUBkpo5BAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAHAIbRbddDy5c4BAIqO/7ecBwAUHT8EAKD4+CEAAMXHDwEAKD5+CABAofEPvWo1CABA1fEPu3p1CABA1fEPv2YNCABA1fGPuHZNCABA1fGPvG4tCABA1fGPun5tCABA1fGPvmEdCABA1fGPvmFdCABA1fE/e+N6EACAquN/7qb1IQAAVcc/5uYNIAAAVcf//C0bQgAAqo7/hVs3ggAAVB3/i7dtDAEAqDr+sYM2gQAAVB3/2EGbQgAAqo5/3O2bQQAAqo5//B2bQwAAqo5/wp1bQAAAqo5/4l1bQgAAqo5/0t1bQQAAqo5/8j1bQwAAqo5/yuBtIAAAVcc/ZfC2EACAquOfeu92EACAquOfdt/2EACAquOffv8OEACAquOf8cCOEACAquOf+eBOEACAquOfNWRnCABA1fHPGrILBACg6vhnP7QrBACg6vjnPLwbBACg6vjnPrI7BACg6vjnPboHBACg6vjnP7YnBACg6vgXPL4XBACg6vgXPrE3BACg6vgXPrEPBACg6vhfenJfCABA1fG//NR+EACAquNf9PT+EACAquN/5ZkDIAAAVcf/6tADIQAAVcf/2rCDIAAAVce/ePjBEACAquNfPPwQCABA1fG/PuJQCABA1fG/MfIwCABA1fG/OepwCABA1fG/NfoICABA1fG//eyREACAquN/57mjIAAAVce/ZMzREACAquNfMuYYCABA1fG/+/yxEACAquN/74XjIAAA46+O//0XB0IAAMZfHf8HY4+HAACMvzr+D8edAIEwAsYfH//S8SdCIIyA8cfHv3T8SRAII2D88fF/NOFkCIQRMP74+D+eeAoEwggYf3z8n0w6FQJhBIw/Pv5PJ58GgTACxh8f/2dTTodAGAHjj4//86lnQCCMgPHHx//FtDMhEEbA+OPj/2LaWRAII2D88fF/Of1sCIQRMP74+L+acQ4EwggYf3z8X888FwJhBIw/Pv5vZp0HgTACxh8f/7ezz4dAGAHjj4//uzkXQCCMgPHHx79s7oUQCCNg/PHxL5t7EQTCCBh/fPzfz7sYAmEEjD8+/h/mXwKBMALGHx//jwsuhUAYAeOPj/+nhZdBIIyA8cfH//NLl0MgjIDxx8f/y8tXQCCMgPHHx7980ZUQCCPgGwAEjN83AAj4DcD4/QYAAf8CGL9/ASDgOgDjdx0ABFwJaPyuBISAewGM370AEHA3oPG7GxACngdg/J4HAAFPBDJ+TwSCgGcCGr9nAkLAU4GNHwAQ8F4A4wcABLwZyPgBAAHvBjR+AEDA24GNHwAQ+O8iYPzN8f+vAYDAiiNg/M3x/+8BgMCKIWD8zfEnAIDAvyNg/M3xZwCAwD8jYPzN8acAgMDfI2D8zfHnAIDAXyNg/M3xJwGAwJ8RMP7m+LMAQOCPCBh/c/xpACDwOwLG3xx/HgAIDDT+8PgBAAHjj3/2AQAB4weAyggYPwAURsD4AaAwAsYPAIURMH4AKIyA8QNAYQSMHwAKI2D8AFAYAeMHgMIIGD8AFEbA+AGgMALGDwCFETB+ACiMgPEDQGEEjB8ACiNg/ABQGAHjB4DCCBg/ABRGwPgBoDACxg8AhREwfgAojIDxA0BhBIwfAAojYPwAUBgB4weAwggYPwAURsD4AaAwAsYPAIURMH4AKIyA8QNAYQSMHwAKI2D8AFAYAeMHgMIIGD8AFEbA+AGgMALGDwCFETB+ACiMgPEDQGEEjB8ACiNg/ABQGAHjB4DCCBg/ABRGwPgBoDACxg8AhREwfgAojIDxA0BhBIwfAAojYPwAUBgB4weAwggYPwAURsD4AaAwAsYPAIURMH4AKIyA8QNAYQSMHwAKI2D8AFAYAeMHgMIIGD8ABAHjB4DqCDgfACiKgHMBgKIIOA8AKIqAcwCAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASABwCFK2XwF5/poXL94a1AAAAABJRU5ErkJggg==
 VR_EOF_B64
 
-# >>> ФАЙЛ: src-tauri/icons/32x32.png
+echo '>>> src-tauri/icons/32x32.png'
 base64 -d > 'src-tauri/icons/32x32.png' << 'VR_EOF_B64'
 iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAApklEQVR42mNgZedlGEjMMOqAUQdQagDfnP//B8wBIMt3Tlb+T4kjKLb8wCwdihxBseXHF5pQ5AiKLT+3wpYiR1Bs+dX1bhQ5gmLL72zzo8gRFFv+eG84RY6g2PJXRxIocgTFln88nUGRIyi2/MelQoocQbHl/29WUeSIwRkCgyINDIpcMCjKgUFREg6KumBQ1IaDoj0wKFpEg6JNOChaxaMdk2HhAAA62RN6eXKmyQAAAABJRU5ErkJggg==
 VR_EOF_B64
 
-# >>> ФАЙЛ: src-tauri/icons/icon.ico
+echo '>>> src-tauri/icons/icon.ico'
 base64 -d > 'src-tauri/icons/icon.ico' << 'VR_EOF_B64'
 AAABAAEAAAAAAAEAIADNBgAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAEAAAABAAgGAAAAXHKoZgAABpRJREFUeNrt3cUOnGUAhtFuCCu4BVyDa3ANrsGhEFyDa7gJ3IsWK251KFB3b6FA0WLFvWhZEUKwLgnPWTw38GXek8nMLwNWWnmVAZKaOQQJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACAJAJIAIAkAkgAgCQCSACABwCG0W3XQ8uXOAQCKjv+3nAcAFB0/BACg+PghAADFxw8BACg+fggAQKHxD71qNQgAQNXxD7t6dQgAQNXxD79mDQgAQNXxj7h2TQgAQNXxj7xuLQgAQNXxj7p+bQgAQNXxj75hHQgAQNXxj75hXQgAQNXxP3vjehAAgKrjf+6m9SEAAFXHP+bmDSAAAFXH//wtG0IAAKqO/4VbN4IAAFQd/4u3bQwBAKg6/rGDNoEAAFQd/9hBm0IAAKqOf9ztm0EAAKqOf/wdm0MAAKqOf8KdW0AAAKqOf+JdW0IAAKqOf9LdW0EAAKqOf/I9W0MAAKqOf8rgbSAAAFXHP2XwthAAgKrjn3rvdhAAgKrjn3bf9hAAgKrjn37/DhAAgKrjn/HAjhAAgKrjn/ngThAAgKrjnzVkZwgAQNXxzxqyCwQAoOr4Zz+0KwQAoOr45zy8GwQAoOr45z6yOwQAoOr45z26BwQAoOr45z+2JwQAoOr4Fzy+FwQAoOr4Fz6xNwQAoOr4Fz6xDwQAoOr4X3pyXwgAQNXxv/zUfhAAgKrjX/T0/hAAgKrjf+WZAyAAAFXH/+rQAyEAAFXH/9qwgyAAAFXHv3j4wRAAgKrjXzz8EAgAQNXxvz7iUAgAQNXxvzHyMAgAQNXxvznqcAgAQNXxvzX6CAgAQNXxv/3skRAAgKrjf+e5oyAAAFXHv2TM0RAAgKrjXzLmGAgAQNXxv/v8sRAAgKrjf++F4yAAAOOvjv/9FwdCAADGXx3/B2OPhwAAjL86/g/HnQCBMALGHx//0vEnQiCMgPHHx790/EkQCCNg/PHxfzThZAiEETD++Pg/nngKBMIIGH98/J9MOhUCYQSMPz7+TyefBoEwAsYfH/9nU06HQBgB44+P//OpZ0AgjIDxx8f/xbQzIRBGwPjj4/9i2lkQCCNg/PHxfzn9bAiEETD++Pi/mnEOBMIIGH98/F/PPBcCYQSMPz7+b2adB4EwAsYfH/+3s8+HQBgB44+P/7s5F0AgjIDxx8e/bO6FEAgjYPzx8S+bexEEwggYf3z838+7GAJhBIw/Pv4f5l8CgTACxh8f/48LLoVAGAHjj4//p4WXQSCMgPHHx//zS5dDIIyA8cfH/8vLV0AgjIDxx8e/fNGVEAgj4BsABIzfNwAI+A3A+P0GAAH/Ahi/fwEg4DoA43cdAARcCWj8rgSEgHsBjN+9ABBwN6DxuxsQAp4HYPyeBwABTwQyfk8EgoBnAhq/ZwJCwFOBjR8AEPBeAOMHAAS8Gcj4AQAB7wY0fgBAwNuBjR8AEPjvImD8zfH/rwGAwIojYPzN8f/vAYDAiiFg/M3xJwCAwL8jYPzN8WcAgMA/I2D8zfGnAIDA3yNg/M3x5wCAwF8jYPzN8ScBgMCfETD+5vizAEDgjwgYf3P8aQAg8DsCxt8cfx4ACAw0/vD4AQAB449/9gEAAeMHgMoIGD8AFEbA+AGgMALGDwCFETB+ACiMgPEDQGEEjB8ACiNg/ABQGAHjB4DCCBg/ABRGwPgBoDACxg8AhREwfgAojIDxA0BhBIwfAAojYPwAUBgB4weAwggYPwAURsD4AaAwAsYPAIURMH4AKIyA8QNAYQSMHwAKI2D8AFAYAeMHgMIIGD8AFEbA+AGgMALGDwCFETB+ACiMgPEDQGEEjB8ACiNg/ABQGAHjB4DCCBg/ABRGwPgBoDACxg8AhREwfgAojIDxA0BhBIwfAAojYPwAUBgB4weAwggYPwAURsD4AaAwAsYPAIURMH4AKIyA8QNAYQSMHwAKI2D8AFAYAeMHgMIIGD8AFEbA+AGgMALGDwCFETB+ACiMgPEDQGEEjB8ACiNg/ABQGAHjB4DCCBg/AAQB4weA6gg4HwAoioBzAYCiCDgPACiKgHMAgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgCgCQASAKAJABIAoAkAEgAcAhStl8Bef6aFy/eGtQAAAAASUVORK5CYII=
 VR_EOF_B64
 
-# >>> ФАЙЛ: src-tauri/icons/icon.png
+echo '>>> src-tauri/icons/icon.png'
 base64 -d > 'src-tauri/icons/icon.png' << 'VR_EOF_B64'
 iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAARrklEQVR42u3d1RbldR2HYU5YHsElSCgIKqF0CVIS0iEoHdKtgN4ErYJ0gzRMk9PFDDDDBB0G3aAoMBz97kF4n4PnBr5r/ffnXXvtWG3176yxGgDQ4ggAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAQAAAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAALAEQBAAAAAAgAAEAAAgAAAAAQA8I2y5tWrVrkDCAAgNv6De4AAAGLjLwJAAADR8RcBIACA6PiLABAAQHT8RQAIACA6/iIABAAQHX8RAAIAiI6/CAABAETHXwSAAACi4y8CQAAA0fEXASAAgG/R+E+46LsiAAQAUBv/CRetJQJAAAC18Z948VoiAAQAUBv/iRevLQJAAAC18Z90ydoiAAQAUBv/SZesIwJAAAC18Z986ToiAAQAUBv/yZeuKwJAAAC98V9XBIAAAGrjP+Wy74kAEABAbfwHEQACAAiN/9TLvy8CQAAAtfGfevl6IgAEAFAb/2lXrCcCQAAAtfGfdsX6IgAEANAb//VFAAgAoDb+D//pByIABABQG/9BBIAAAELj/8ifNxABIACA2vgPIgAEABAa/0f/sqEIAAEA1MZ/EAEgAIDQ+D925Q9FAAgAoDb+gwgAAQCkxv9HIgAEAFAb/8ev+rEIAAEA1MZ/EAEgAIDQ+D/x141EAAgAoDb+gwgAAQCExn/61RuLABAAQG38BxEAAgBIjf8mIgAEAFAb/xnXbCICQAAAtfGfcc2mIgAEAFAb/5nXbioCQAAAtfGfee1PRAAIAKA2/rOu+6kIAAEA1MZ/EAEgAIDU+G8mAkAAALXxn339ZiIABABQG//Z128uAkAAALXxn3PD5iIABABQG/85N2whAkAAALXxn3vjFiIABABQG/+5N24pAkAAALXxn3fTliIABABQG/95N20lAkAAAL3x30oEgAAAauM//+atRQAIADD+tfGff/M2IgAEABj/2vgvuGUbEQACAIx/bfwX3LKtCAABAMa/Nv4Lb91WBHgOEABg/Gvjv/DW7USACEAAgPHvjf92IkAEIADA+NfG/8nbthcBIgABAMa/Nv6DCBABCAAw/qHxX3T7DiJABCAAwPjXxn8QASIAAQDGPzT+i+/4mQgQAQgAMP618V98x44iQAQgAMD498Z/RxEgAhAAYPxr4//UnTuJABGAAADjXxv/QQSIAAQAGP/Q+D/9t5+LABGAAADjXxv/QQSIAAQAGP/Q+D9z184iQAQgAMD418Z/EAEiAAEAxj80/kvu3kUEiAAEABj/2vgPIkAEIADA+KfGf1cRIAIQAGD8a+O/9J5dRYAIQACA8a+N/9J7dhMBIgABAMa/Nv7P3ru7CBABCAAw/rXxH0SACEAAgPEPjf+y+34hAkQAAgCMf238BxEgAhAAYPxT47+HCBABCAAw/rXxX37/HiJABCAAwPjXxn/5/XuKABGAAADjXxv/FQ/sKQJEAAIAjH9t/Fc8sJcIEAEIADD+tfFf+eBeIkAEIADA+NfGf+WDe4sAEYAAAONfG//nHvqlCBABCAAw/rXxH0SACEAAgPFPjf8+IkAEIADA+NfG//kJ+4gAEYAAAONfG//nJ+wrAkQAAgCMf238X5i4rwgQAQgAMP618X9h4n4iQAQgAMD418b/xUn7iQARgAAA418b/xcn7S8CRAACAIx/b/z3FwEiAAEAxr82/i9NPkAEiAAEABj/2vgPIkAEIADA+IfG/+UpB4oAEYAAAONfG/+XpxwkAkQAAgCMf238X5l6kAgQAQgAMP618X9l6sEiQAQgAMD498b/YBEgAhAAYPxr4//qtENEgAhAAIDxr43/IAJEAAIAjH9o/F97+FARIAIQAGD8a+M/iAARgAAA4x8a/9cf+ZUIEAEIADD+tfEfRIAIQACA8Q+N/98fPUwEiAAEABj/2vgPIkAEIADA+KfG/3ARIAIQAGD8a+P/j8d+LQJEAAIAjH9t/AcRIAIQABh/4x8a/38+/hsRIAIQABh/418b/0EEiAAEAMbf+IfG/19PHCECRAACAONv/GvjP4gAEYAAwPgb/9T4HykCRIDXQgGA8Tf+tfF/Y/qRIkAEiAABgPE3/rXxf2P6USJABIgAAYDxN/618X9zxlEiQASIAAGA8Tf+tfF/c8bRIkAEiAABgPE3/rXxf2vmMSJABIgAAYDxN/618R9EgAgQAQIA42/8U+N/rAgQASJAAGD8jX9t/N+edawIEAEiQABg/I1/bfzfnnWcCBABIkAAYPyNf23835l9nAgQASJAAGD8jX9t/N+ZfbwIEAEiQABg/I1/bfzfnXO8CBABIkAAYPyNf238351zgggQASJAAGD8jX9t/N+be4IIEAEiQABg/I1/bfzfm3uiCBABIkAAYPyNf2/8TxQBIkAECACMv/Gvjf/7834rAkSACBAAGH/jXxv/9+edJAJEgAgQABh/418b/w/mnyQCRIAIEAAYf+NfG/8P5p8sAkSACBAAGH/jXxv/DxecLAJEgAgQABh/418b/w8XnCICRIAIEAAYf+PfG/9TRIAIEAECAONv/Gvj/9HCU0WACBABAgDjb/xr4z+IABEgAgQAxt/4h8b/4ydPEwEiQAQIAIy/8a+N/yACRIAIEAAYf+MfGv9PFp0uAkSACBAAGH/jXxv/TxadIQJEgAgQABh/498b/zNEgAgQAQIA42/8a+P/6eIzRYAIEAECAONv/GvjP4gAESACBADG3/iHxv+zp84SASJABAgAjL/xr43/IAJEgAgQABh/4x8a/38/fbYIEAEiQABg/I1/bfwHESACRIAAwPgb/9D4/+eZc0SACBABAgDjb/xr4z+IABEgAgQAxt/4p8b/XBEgAkSAAMD4G//a+H++5FwRIAJEgADA+Bv/2vh/vuQ8ESACRIAAwPgb/9r4/3fp70SACBABAgDjb/xr4z+IABEgAgQAxt/4h8b/f8/+XgSIABEgADD+xr82/oMIEAEiQABg/I1/avzPFwEiQAQIAIy/8a+N/xfLzhcBIkAECACMv/Gvjf8Xyy4QASJABAgAjL/xr43/l8svEAEiQAQIAIy/8a+N/5fLLxQBIkAECACMv/Gvjf9XKy4UASJABAgAjL/xr43/Vyv+IAJEgAgQABh/418b/1Ur/ygCRIAIEACIABHgHQDjb/yNvwBABIgAnwEw/sbf+AsARIAI8C0A42/8jb8AQASIAL8DYPyNv/EXACJABIgAvwRo/I2/8RcAIkAEiAD/BWD8jb/xFwAiQASIAP8GaPyNv/EXACJABIiA/6sIMP7G3/gLAESACMhFgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/yNvwBABIiAYAQYf+Nv/AUAIkAEBCPA+Bt/4y8AEAEiIBkBxt/4G38BgAgQAbkIMP7G3/gLAESACAhGgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/yNvwBABIiAYAQYf+Nv/AUAIkAEBCPA+Bt/4y8AEAEiIBgBxt/4G38BgAgQAckIMP7G3/gLAESACMhFgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/yNvwBABIiAYAQYf+Nv/AUAIkAEBCPA+Bt/4y8AEAEiIBkBxt/4G38BgAgQAbkIMP7G3/gLAESACAhGgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/yNvwBABIiAYAQYf+Nv/AUAIkAEJCPA+Bt/4y8AEAEiIBcBxt/4G38BgAgQAcEIMP7G3/gLAESACAhGgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/yNvwBABIiAYAQYf+Nv/AUAIkAEBCPA+Bt/4y8AEAEiIBkBxt/4G38BgAgQAbkIMP7G3/gLAESACAhGgPE3/sZfACACREAwAoy/8Tf+AgARIAKCEWD8jb/xFwCIABEQjADjb/y9HgoARIAICEaA8Tf+CABEgAhIRoDxN/4IAESACMhFgPE3/ggARIAICEaA8Tf+CAAQAcEIMP7GHwEAIiAYAcbf+CMAQAQEI8D4G38EAIiAYAQYf+OPAAARkIwA42/8EQAgAnIRYPyNPwIAREAwAoy/8UcAgAgIRoDxN/4IABABwQgw/sYfAQAiIBgBxt/4IwBABAQjwPgbfwQAiIBgBBh/448AABEQjADjb/wRACACkhFg/I0/AgBEQC4CjL/xRwCACAhGgPE3/ggAEAHBCDD+xh8BACIgGAHG3/gjAEAEBCPA+Bt/BACIgGAEGH/jjwAAEZCMAONv/BEAIAJyEWD8jT8CAERAMAKMv/FHAIAICEaA8Tf+CAAQAcEIMP7GHwEAIiAYAcbf+CMAQAQEI8D4G38EAIiAZAQYf+OPAAARkIsA42/8EQAgAoIRYPyNPwIAREAwAoy/8UcAgAgIRoDxN/4IABABwQgw/sYfAQAiIBgBxt/4IwBABAQjwPgbfwQAiIBgBBh/448AABGQjADjb/wRACACchFg/I0/AgBEQDACjL/xRwCACAhGgPE3/ggAEAHBCDD+xh8BACIgGAHG3/gjAEAEBCPA+Bt/BACIgGQEGH/jjwAAEZCLAONv/BEAIAKCEWD8jT8CAERAMAKMv/FHAIAICEaA8Tf+CAAQAcEIMP7GHwEAIiAYAcbf+CMAQAQEI8D4G38EAIiAYAQYf+OPAAARkIwA42/8EQAgAnIRYPyNPwIAREAwAoy/8UcAgAgIRoDxN/4IABABwQgw/sYfAQAiIBgBxt/4IwBABAQjwPgbfwQAiIBkBBh/zwMCAERALgKMv+cAAQAiIBgBxh8EAIiAYAQYfxAAIAKCEWD8QQCACAhGgPEHAQAEI8D4gwAAkhFg/EEAALkIMP4gAIBgBBh/EABAMAKMPwgAIBgBxh8EABCMAOMPAgAIRoDxBwEABCPA+IMAAIIRYPxBAADJCDD+IACAXAQYfxAAQDACjD8IACAYAcYfBAAQjADjDwIACEaA8QcBAAQjwPiDAACSEWD8QQAAuQgw/iAAgGAEGH8QAEAwAow/CAAgGAHGHwQAEIwA4w8CAAhGgPEHAQAkI8D4gwAAchFg/EEAAMEIMP4gAIBgBBh/EABAMAKMPwgAIBgBxh8EABCMAOMPAgAIRoDxBwEABCPA+IMAAJIRYPxBAAC5CDD+IACAYAQYfxAAQDACjD8IACAYAcYfBAAQjADjDwIACEaA8QcBACQjwPiDAAByEWD8QQAAwQgw/iAAgGAEGH8QAEAwAow/CAAgGAHGHwQAEIwA4w8CAAhGgPEHAQAEI8D4gwAARIDxBwEAiADjDwIASEaAO4IAAGIR4H4gAIBYBLgbCAAgFgHuBQIAiEWAO4EAAGIR4D4gAIBYBLgLCAAgFgHuAQIAiEWAO4AAAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAEgCMAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgCMAgAAAAAQAACAAAAABAAAIAADgm+JrdNmqRBT3boQAAAAASUVORK5CYII=
 VR_EOF_B64
 
-# >>> ФАЙЛ: src-tauri/src/commands.rs
+echo '>>> src-tauri/src/commands.rs'
 cat > 'src-tauri/src/commands.rs' << 'VR_EOF'
 //! ============================================================
 //! Tauri-команды — «мост» между React-фронтендом и системой.
@@ -2482,7 +2507,7 @@ pub fn get_config(app: tauri::AppHandle) -> Result<Config, String> {
 }
 
 /// set_config(config) — сохранить весь конфиг на диск.
-/// Имя аргумента в JS — `config` (Tauri конвертирует camelCase↔snake_case).
+/// Имя аргумента в JS — \`config\` (Tauri конвертирует camelCase↔snake_case).
 #[tauri::command]
 pub fn set_config(app: tauri::AppHandle, config: Config) -> Result<(), String> {
     config::write_config(&app, &config)
@@ -2546,7 +2571,7 @@ pub fn ping_server(address: String) -> Result<bool, String> {
     }
 
     // Минимальный валидный запрос ServerInfo от Valheim (протокол SRV~)
-    const VALHEIM_SERVER_INFO_REQUEST: [u8; 5] = *b"SRV~\0";
+    const VALHEIM_SERVER_INFO_REQUEST: [u8; 5] = *b"SRV~\\0";
 
     // bind на любой свободный локальный порт
     let socket = UdpSocket::bind("0.0.0.0:0")
@@ -2583,7 +2608,7 @@ pub fn ping_server(address: String) -> Result<bool, String> {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/src/config.rs
+echo '>>> src-tauri/src/config.rs'
 cat > 'src-tauri/src/config.rs' << 'VR_EOF'
 //! ============================================================
 //! Работа с конфигурацией: %APPDATA%/ValheimRouge/config.json (п. 3.5 ТЗ)
@@ -2634,7 +2659,7 @@ impl Default for Config {
 }
 
 /// Каталог %APPDATA%/ValheimRouge (Windows) — ровно как требует п. 3.5 ТЗ.
-/// В Tauri v2 app_data_dir() указывает на %APPDATA%\\<identifier>, поэтому
+/// В Tauri v2 app_data_dir() указывает на %APPDATA%\\\\<identifier>, поэтому
 /// базовую %APPDATA% берём из config_dir(), а последним сегментом ставим имя
 /// «ValheimRouge». На Linux/macOS получается ~/.config/ValheimRouge.
 #[allow(dead_code)]
@@ -2645,7 +2670,7 @@ fn config_dir(_app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .path()
         .config_dir()
         .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
-    // На Windows config_dir() == %APPDATA%\<identifier>; поднимаемся на уровень
+    // На Windows config_dir() == %APPDATA%\\<identifier>; поднимаемся на уровень
     // %APPDATA% и собираем нужный нам каталог ValheimRouge.
     let roaming = base
         .parent()
@@ -2692,7 +2717,7 @@ pub fn write_config(app: &tauri::AppHandle, config: &Config) -> Result<(), Strin
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/src/lib.rs
+echo '>>> src-tauri/src/lib.rs'
 cat > 'src-tauri/src/lib.rs' << 'VR_EOF'
 //! ============================================================
 //! Valheim Rouge — Rust-бэкенд лаунчера (Tauri v2)
@@ -2726,7 +2751,7 @@ pub fn run() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/src/main.rs
+echo '>>> src-tauri/src/main.rs'
 cat > 'src-tauri/src/main.rs' << 'VR_EOF'
 // Запрет «окон-призраков» в release-сборке под Windows
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -2736,10 +2761,10 @@ fn main() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src-tauri/tauri.conf.json
+echo '>>> src-tauri/tauri.conf.json'
 cat > 'src-tauri/tauri.conf.json' << 'VR_EOF'
 {
-  "$schema": "https://schema.tauri.app/config/2",
+  "\$schema": "https://schema.tauri.app/config/2",
   "productName": "Valheim Rouge",
   "version": "1.0.0",
   "identifier": "com.valheimrouge.launcher",
@@ -2781,7 +2806,7 @@ cat > 'src-tauri/tauri.conf.json' << 'VR_EOF'
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/App.tsx
+echo '>>> src/App.tsx'
 cat > 'src/App.tsx' << 'VR_EOF'
 // ============================================================
 // App — корневой компонент: TitleBar + переключение экранов
@@ -2862,7 +2887,7 @@ export default function App() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/LoginScreen.tsx
+echo '>>> src/components/LoginScreen.tsx'
 cat > 'src/components/LoginScreen.tsx' << 'VR_EOF'
 // ============================================================
 // LoginScreen — экран аутентификации (заглушка по п. 3.2 ТЗ):
@@ -2991,7 +3016,7 @@ export function LoginScreen() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/NewsCard.tsx
+echo '>>> src/components/NewsCard.tsx'
 cat > 'src/components/NewsCard.tsx' << 'VR_EOF'
 // Одна карточка новости: слева картинка (с fallback на градиент), справа текст.
 import { useState } from 'react';
@@ -3013,7 +3038,7 @@ export function NewsCard({ item }: NewsCardProps) {
           <div className="vr-news-placeholder" aria-hidden="true" />
         ) : (
           <img
-            src={`/news/${item.image}.jpg`}
+            src={\`/news/\${item.image}.jpg\`}
             alt=""
             loading="lazy"
             draggable={false}
@@ -3036,7 +3061,7 @@ export function NewsCard({ item }: NewsCardProps) {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/NewsFeed.tsx
+echo '>>> src/components/NewsFeed.tsx'
 cat > 'src/components/NewsFeed.tsx' << 'VR_EOF'
 // Скроллящаяся лента новостей: вертикальный список карточек с плавным появлением.
 import { motion } from 'framer-motion';
@@ -3061,7 +3086,7 @@ export function NewsFeed() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/PlayButton.tsx
+echo '>>> src/components/PlayButton.tsx'
 cat > 'src/components/PlayButton.tsx' << 'VR_EOF'
 // Прямоугольная кнопка запуска игры во всю ширину правой колонки.
 import { AnimatePresence, motion } from 'framer-motion';
@@ -3086,7 +3111,7 @@ export function PlayButton({ disabled, serverOffline, isLaunching, onPlay }: Pla
       disabled={disabled || isLaunching}
       whileHover={serverOffline ? undefined : { y: -2 }}
       whileTap={{ y: 0 }}
-      className={`vr-play-btn ${serverOffline ? 'vr-play-btn-dim' : ''}`}
+      className={\`vr-play-btn \${serverOffline ? 'vr-play-btn-dim' : ''}\`}
     >
       <AnimatePresence mode="wait">
         <motion.span
@@ -3106,7 +3131,7 @@ export function PlayButton({ disabled, serverOffline, isLaunching, onPlay }: Pla
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/ServerPanel.tsx
+echo '>>> src/components/ServerPanel.tsx'
 cat > 'src/components/ServerPanel.tsx' << 'VR_EOF'
 // Правая колонка главного экрана: статус сервера, панель персонажа и кнопка запуска.
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -3177,8 +3202,8 @@ export function ServerPanel() {
         <h2 className="vr-side-label">Сервер</h2>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className={`h-2 w-2 rounded-full ${statusView.dot}`} />
-            <span className={`text-xs font-bold tracking-widest ${statusView.text}`}>
+            <span className={\`h-2 w-2 rounded-full \${statusView.dot}\`} />
+            <span className={\`text-xs font-bold tracking-widest \${statusView.text}\`}>
               {statusView.label}
             </span>
           </div>
@@ -3273,7 +3298,7 @@ export function ServerPanel() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/SettingsModal.tsx
+echo '>>> src/components/SettingsModal.tsx'
 cat > 'src/components/SettingsModal.tsx' << 'VR_EOF'
 // ============================================================
 // SettingsModal — экран настроек (п. 3.5 ТЗ):
@@ -3325,7 +3350,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           <input
             value={gamePath}
             onChange={(e) => setGamePath(e.target.value)}
-            placeholder="Z:\Games\Valheim"
+            placeholder="Z:\\Games\\Valheim"
             className="vr-input vr-selectable font-mono text-sm"
           />
           <VRButton variant="ghost" onClick={() => void handlePick()} title="Выбрать папку">
@@ -3376,7 +3401,7 @@ function VRModalWithSync(props: {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/TitleBar.tsx
+echo '>>> src/components/TitleBar.tsx'
 cat > 'src/components/TitleBar.tsx' << 'VR_EOF'
 // ============================================================
 // TitleBar — кастомная шапка окна (дефолтная рамка Windows отключена
@@ -3452,7 +3477,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/components/ui.tsx
+echo '>>> src/components/ui.tsx'
 cat > 'src/components/ui.tsx' << 'VR_EOF'
 // ============================================================
 // UI-кит: переиспользуемые примитивы в стиле Battle.net.
@@ -3483,7 +3508,7 @@ export const VRButton = forwardRef<HTMLButtonElement, VRButtonProps>(
           : // ghost — прозрачная кнопка с тонкой обводкой (иконки, второстепенные действия)
             'px-3 py-2 rounded-lg border border-edge text-slate-300 hover:text-white hover:border-blizzard/60 hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
     return (
-      <button ref={ref} className={`${style} ${className}`} {...rest}>
+      <button ref={ref} className={\`\${style} \${className}\`} {...rest}>
         {children}
       </button>
     );
@@ -3499,7 +3524,7 @@ interface VRCardProps {
 }
 
 export function VRCard({ children, className = '' }: VRCardProps) {
-  return <div className={`vr-glass ${className}`}>{children}</div>;
+  return <div className={\`vr-glass \${className}\`}>{children}</div>;
 }
 
 /* ---------- Модальное окно (аналог components/ui/dialog) ---------- */
@@ -3551,7 +3576,7 @@ export function VRModal({ open, title, children, onClose }: VRModalProps) {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/data/news.ts
+echo '>>> src/data/news.ts'
 cat > 'src/data/news.ts' << 'VR_EOF'
 // Mock-данные ленты новостей главного экрана.
 // Картинки лежат в public/news/*.jpg; если файла нет, NewsCard покажет градиент.
@@ -3609,7 +3634,7 @@ export const news: NewsItem[] = [
 ];
 VR_EOF
 
-# >>> ФАЙЛ: src/index.css
+echo '>>> src/index.css'
 cat > 'src/index.css' << 'VR_EOF'
 /* ============================================================
    Valheim Rouge — базовый CSS-кит (шрифты, палитра, утилиты)
@@ -3879,7 +3904,7 @@ body::before {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/lib/api.ts
+echo '>>> src/lib/api.ts'
 cat > 'src/lib/api.ts' << 'VR_EOF'
 // ============================================================
 // API-слой: тонкая обёртка над Tauri invoke().
@@ -3933,7 +3958,7 @@ export function isTauri(): boolean {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/main.tsx
+echo '>>> src/main.tsx'
 cat > 'src/main.tsx' << 'VR_EOF'
 // Точка входа React-приложения
 import React from 'react';
@@ -3948,7 +3973,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 );
 VR_EOF
 
-# >>> ФАЙЛ: src/screens/MainScreen.tsx
+echo '>>> src/screens/MainScreen.tsx'
 cat > 'src/screens/MainScreen.tsx' << 'VR_EOF'
 // Главный экран лаунчера: двухколоночный layout в стиле Battle.net.
 // Слева — лента новостей, справа — панель сервера/персонажа и кнопка ИГРАТЬ.
@@ -3999,7 +4024,7 @@ export function MainScreen() {
 }
 VR_EOF
 
-# >>> ФАЙЛ: src/store/useLauncherStore.ts
+echo '>>> src/store/useLauncherStore.ts'
 cat > 'src/store/useLauncherStore.ts' << 'VR_EOF'
 // ============================================================
 // Глобальное состояние лаунчера на Zustand (по ТЗ — легче Context API).
@@ -4074,7 +4099,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       try {
         await api.setConfig(next);
       } catch (err) {
-        set({ errorMessage: `Не удалось сохранить настройки: ${String(err)}` });
+        set({ errorMessage: \`Не удалось сохранить настройки: \${String(err)}\` });
       }
     }
   },
@@ -4106,7 +4131,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
 }));
 VR_EOF
 
-# >>> ФАЙЛ: src/types.ts
+echo '>>> src/types.ts'
 cat > 'src/types.ts' << 'VR_EOF'
 // Типы конфигурации лаунчера — зеркалят структуру Rust-структуры Config (src-tauri/src/config.rs).
 // Держим их синхронно, чтобы serde корректно сериализовал JSON между бэкендом и фронтендом.
@@ -4131,12 +4156,12 @@ export const DEFAULT_CONFIG: LauncherConfig = {
 };
 VR_EOF
 
-# >>> ФАЙЛ: src/vite-env.d.ts
+echo '>>> src/vite-env.d.ts'
 cat > 'src/vite-env.d.ts' << 'VR_EOF'
 /// <reference types="vite/client" />
 VR_EOF
 
-# >>> ФАЙЛ: tailwind.config.js
+echo '>>> tailwind.config.js'
 cat > 'tailwind.config.js' << 'VR_EOF'
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -4177,7 +4202,7 @@ export default {
 };
 VR_EOF
 
-# >>> ФАЙЛ: tsconfig.json
+echo '>>> tsconfig.json'
 cat > 'tsconfig.json' << 'VR_EOF'
 {
   "compilerOptions": {
@@ -4205,7 +4230,7 @@ cat > 'tsconfig.json' << 'VR_EOF'
 }
 VR_EOF
 
-# >>> ФАЙЛ: vite.config.ts
+echo '>>> vite.config.ts'
 cat > 'vite.config.ts' << 'VR_EOF'
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -4231,3 +4256,10 @@ export default defineConfig({
 });
 VR_EOF
 
+
+
+echo 'Готово. Дальше: npm install && npm run tauri dev'
+VR_SELF_EOF
+chmod +x restore-valheim-rouge.sh
+
+echo 'Готово. Дальше: npm install && npm run tauri dev'
