@@ -1,4 +1,3 @@
-/* ============================================================
    Valheim Rouge — базовый CSS-кит (шрифты, палитра, утилиты)
    Стилистика: Battle.net / Blizzard — тёмная тема + glassmorphism
    ============================================================ */
@@ -57,13 +56,13 @@ body::before {
 }
 
 @layer components {
-  /* ---- Glassmorphism-карточка: полупрозрачность + размытие backdrop ---- */
+  /* Glassmorphism-карточка: полупрозрачность + размытие backdrop */
   .vr-glass {
     @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   }
 
-  /* ---- Кнопка в стиле Blizzard: градиент + свечение при наведении ---- */
+  /* Кнопка в стиле Blizzard: градиент + свечение при наведении */
   .vr-btn-primary {
     @apply relative px-6 py-3 rounded-lg font-semibold tracking-wide text-white
            transition-all duration-300 cursor-pointer select-none;
@@ -78,8 +77,8 @@ body::before {
     @apply opacity-40 cursor-not-allowed;
   }
 
-  /* ---- Золотая «легендарная» кнопка ИГРАТЬ (круглая, из старой версии —
-         больше не используется на главном экране, оставлена для модалок) ---- */
+  /* Золотая «легендарная» кнопка ИГРАТЬ (круглая, из старой версии —
+         больше не используется на главном экране, оставлена для модалок) */
   .vr-btn-play {
     @apply relative font-display font-bold uppercase tracking-[0.3em] text-black
            rounded-lg transition-all duration-300 cursor-pointer;
@@ -94,7 +93,7 @@ body::before {
     @apply opacity-40 cursor-not-allowed;
   }
 
-  /* ============ РЕДИЗАЙН: двухколоночный главный экран ============ */
+  /* Двухколоночный главный экран */
 
   /* Сетка layout: новости 65% / панель 35%, зазор 24px, поля 32px */
   .vr-main-grid {
@@ -256,7 +255,7 @@ body::before {
            hover:border-blizzard/60 hover:text-white cursor-pointer;
   }
 
-  /* ---- Поле ввода с плавной анимацией фокуса ---- */
+  /* Поле ввода с плавной анимацией фокуса */
   .vr-input {
     @apply w-full px-4 py-3 rounded-lg bg-steel/80 border border-edge text-slate-100
            placeholder:text-slate-500 outline-none transition-all duration-300;
@@ -265,8 +264,8 @@ body::before {
     @apply border-blizzard shadow-glow-blue bg-steel;
   }
 
-  /* ---- Тонкая прокрутка: тёмно-синий thumb, прозрачный трек.
-         width 6px, контент не перекрывает. Chrome/Edge/WebView2 ---- */
+  /* Тонкая прокрутка: тёмно-синий thumb, прозрачный трек.
+         width 6px, контент не перекрывает. Chrome/Edge/WebView2 */
   .vr-scroll::-webkit-scrollbar,
   .vr-news-feed::-webkit-scrollbar,
   .vr-side::-webkit-scrollbar {
