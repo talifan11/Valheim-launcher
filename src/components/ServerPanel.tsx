@@ -1,9 +1,9 @@
 // Правая колонка главного экрана: статус сервера, панель персонажа и кнопка запуска.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Copy, RefreshCw, Shield, Settings } from 'lucide-react';
+import { Check, Copy, FolderOpen, RefreshCw, Shield, Settings } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { copyToClipboard, isTauri } from '../lib/api';
+import { copyToClipboard, isTauri, openInShell } from '../lib/api';
 import { useLauncherStore } from '../store/useLauncherStore';
 import { PlayButton } from './PlayButton';
 
@@ -12,7 +12,12 @@ type Status = 'checking' | 'online' | 'offline';
 /** Период автообновления статуса — 15 секунд */
 const REFRESH_MS = 15_000;
 
-export function ServerPanel() {
+interface ServerPanelProps {
+  /** Поднять статус соединения в App, чтобы TitleBar показал индикатор */
+  onConnectionChange: (status: Status) => void;
+}
+
+export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
   const config = useLauncherStore((s) => s.config);
   const isLaunching = useLauncherStore((s) => s.isLaunching);
   const play = useLauncherStore((s) => s.play);
@@ -22,19 +27,22 @@ export function ServerPanel() {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  // UDP-пинк port 21589 через Rust-команду ping_server (см. commands.rs)
+  // UDP-пинг игрового порта через Rust-команду ping_server (см. commands.rs)
   const check = useCallback(async () => {
+    let next: Status = 'online';
     if (!isTauri()) {
-      setStatus('online');
-      return;
+      next = 'online';
+    } else {
+      try {
+        const alive = await invoke<boolean>('ping_server', { address: config.server_address });
+        next = alive ? 'online' : 'offline';
+      } catch {
+        next = 'offline';
+      }
     }
-    try {
-      const alive = await invoke<boolean>('ping_server', { address: config.server_address });
-      setStatus(alive ? 'online' : 'offline');
-    } catch {
-      setStatus('offline');
-    }
-  }, [config.server_address]);
+    setStatus(next);
+    onConnectionChange(next);
+  }, [config.server_address, onConnectionChange]);
 
   useEffect(() => {
     void check();
@@ -51,6 +59,19 @@ export function ServerPanel() {
       window.setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Буфер обмена недоступен:', err);
+    }
+  };
+
+  // Открыть папку игры в проводнике Windows (shell plugin)
+  const handleOpenFolder = async () => {
+    if (!config.game_path) {
+      onOpenSettings(true);
+      return;
+    }
+    try {
+      await openInShell(config.game_path);
+    } catch (err) {
+      console.error('Не удалось открыть папку:', err);
     }
   };
 

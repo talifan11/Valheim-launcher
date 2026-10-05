@@ -26,9 +26,9 @@ pub struct Config {
     pub theme: String,
 }
 
-/// Значение сервера по умолчанию — наш playit.gg туннель
+/// Значение сервера по умолчанию — адрес выделенного игрового сервера
 fn default_server_address() -> String {
-    "pgsql-louisville.tun.ply.gg:21589".to_string()
+    "85.198.70.143:2456".to_string()
 }
 
 fn default_theme() -> String {
