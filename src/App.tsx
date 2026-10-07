@@ -1,9 +1,9 @@
 // App — корневой компонент: TitleBar + переключение экранов
 // (Login/Main) через AnimatePresence + глобальная модалка ошибок.
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
-import { TitleBar } from './components/TitleBar';
+import { TitleBar, type ConnectionState } from './components/TitleBar';
 import { LoginScreen } from './components/LoginScreen';
 import { MainScreen } from './screens/MainScreen';
 import { SettingsModal } from './components/SettingsModal';
@@ -19,6 +19,9 @@ export default function App() {
   const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
   const logout = useLauncherStore((s) => s.logout);
 
+  // Статус пинга сервера: источник — ServerPanel, потребитель — TitleBar
+  const [connection, setConnection] = useState<ConnectionState>('checking');
+
   // При старте читаем config.json из Rust-бэкенда (п. 3.5 ТЗ).
   // Если пользователь уже сохранён — сразу пускаем внутрь без логина?
   // Нет: по ТЗ экран входа показывается всегда, но ник подтягиваем.
@@ -28,14 +31,14 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <TitleBar onOpenSettings={() => setSettingsOpen(true)} onLogout={logout} />
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} onLogout={logout} connection={connection} />
 
       <main className="relative flex-1">
         {/* Переключение экранов с анимацией кросс-фейда */}
         <AnimatePresence mode="wait">
           {isAuthenticated ? (
             <motion.div key="main" className="absolute inset-0">
-              <MainScreen />
+              <MainScreen connection={connection} onConnectionChange={setConnection} />
             </motion.div>
           ) : (
             <motion.div key="login" className="absolute inset-0">

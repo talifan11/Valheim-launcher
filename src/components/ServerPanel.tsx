@@ -178,6 +178,11 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
           <Settings size={15} />
           Настройки
         </button>
+        {/* Быстрый доступ к папке игры: при пустом пути ведём в настройки */}
+        <button type="button" onClick={handleOpenFolder} className="vr-btn-settings">
+          <FolderOpen size={15} />
+          Открыть папку игры
+        </button>
       </div>
     </aside>
   );

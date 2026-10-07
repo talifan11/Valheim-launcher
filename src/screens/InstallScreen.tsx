@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Download, RefreshCw, Server, XCircle } from 'lucide-react';
-import { VRButton } from './ui';
+import { VRButton } from '../components/ui';
 import { formatBytes, formatEtaClock, useUpdateStore } from '../store/useUpdateStore';
 import { useLauncherStore } from '../store/useLauncherStore';
 
