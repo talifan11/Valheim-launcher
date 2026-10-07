@@ -7,8 +7,7 @@ import { copyToClipboard, isTauri, openInShell } from '../lib/api';
 import { useLauncherStore } from '../store/useLauncherStore';
 import { PlayButton } from './PlayButton';
 
-// Четыре состояния, синхронно с TitleBar и App.
-type Status = 'checking' | 'online' | 'active' | 'offline';
+type Status = 'checking' | 'online' | 'offline';
 
 /** Период автообновления статуса — 15 секунд */
 const REFRESH_MS = 15_000;
@@ -28,20 +27,15 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  // Трёхуровневая проверка статуса сервера через Rust-команду ping_server.
-  // Возвращает строку: "online" | "active" | "offline".
+  // UDP-пинг игрового порта через Rust-команду ping_server (см. commands.rs)
   const check = useCallback(async () => {
-    let next: Status = 'offline';
+    let next: Status = 'online';
     if (!isTauri()) {
       next = 'online';
     } else {
       try {
-        const result = await invoke<string>('ping_server', { address: config.server_address });
-        if (result === 'online' || result === 'active' || result === 'offline') {
-          next = result;
-        } else {
-          next = 'offline';
-        }
+        const alive = await invoke<boolean>('ping_server', { address: config.server_address });
+        next = alive ? 'online' : 'offline';
       } catch {
         next = 'offline';
       }
@@ -68,7 +62,7 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
     }
   };
 
-  // Открыть папку игры в проводнике. Если путь не задан — ведём в настройки.
+  // Открыть папку игры в проводнике Windows (shell plugin)
   const handleOpenFolder = async () => {
     if (!config.game_path) {
       onOpenSettings(true);
@@ -82,30 +76,10 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
   };
 
   const statusView = {
-    checking: {
-      dot: 'bg-slate-400 animate-pulse',
-      label: 'ПРОВЕРКА…',
-      text: 'text-slate-400',
-    },
-    online: {
-      dot: 'bg-emerald shadow-[0_0_10px_#2fbf71]',
-      label: 'ONLINE',
-      text: 'text-emerald',
-    },
-    active: {
-      dot: 'bg-blizzard shadow-[0_0_10px_#0e9cff]',
-      label: 'СЕРВЕР АКТИВЕН',
-      text: 'text-blizzard',
-    },
-    offline: {
-      dot: 'bg-blood shadow-[0_0_10px_#ff5566]',
-      label: 'OFFLINE',
-      text: 'text-blood',
-    },
+    checking: { dot: 'bg-slate-400 animate-pulse', label: 'ПРОВЕРКА…', text: 'text-slate-400' },
+    online: { dot: 'bg-emerald shadow-[0_0_10px_#2fbf71]', label: 'ONLINE', text: 'text-emerald' },
+    offline: { dot: 'bg-blood shadow-[0_0_10px_#ff5566]', label: 'OFFLINE', text: 'text-blood' },
   }[status];
-
-  // Кнопка ИГРАТЬ блокируется только когда сервер точно недоступен.
-  const serverOffline = status === 'offline';
 
   return (
     <aside className="vr-side">
@@ -163,7 +137,7 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
         </div>
       </section>
 
-      {/* Блок «Персонаж»: аватар-заглушка + ник из логина + счётчики */}
+      {/* Блок «Персонаж»: аватар-заглушка + ник из логина + счётчики (пока захардкожены) */}
       <section className="vr-glass vr-side-block">
         <h2 className="vr-side-label">Персонаж</h2>
         <div className="flex items-center gap-3">
@@ -193,28 +167,21 @@ export function ServerPanel({ onConnectionChange }: ServerPanelProps) {
         </dl>
       </section>
 
-      {/* Кнопки: ИГРАТЬ + папка + настройки */}
+      {/* Кнопки: ИГРАТЬ (золотая, во всю ширину) + Настройки (ghost, под ней) */}
       <div className="mt-auto space-y-3">
         <PlayButton
-          serverOffline={serverOffline}
+          serverOffline={status === 'offline'}
           isLaunching={isLaunching}
           onPlay={() => void play()}
         />
-        <button
-          type="button"
-          onClick={() => void handleOpenFolder()}
-          className="vr-btn-settings"
-        >
-          <FolderOpen size={15} />
-          Открыть папку игры
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenSettings(true)}
-          className="vr-btn-settings"
-        >
+        <button type="button" onClick={() => onOpenSettings(true)} className="vr-btn-settings">
           <Settings size={15} />
           Настройки
+        </button>
+        {/* Быстрый доступ к папке игры: при пустом пути ведём в настройки */}
+        <button type="button" onClick={handleOpenFolder} className="vr-btn-settings">
+          <FolderOpen size={15} />
+          Открыть папку игры
         </button>
       </div>
     </aside>

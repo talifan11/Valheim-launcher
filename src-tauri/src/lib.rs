@@ -1,12 +1,12 @@
-// ============================================================
-// Valheim Rouge — Rust-бэкенд лаунчера (Tauri v2)
-// Модули:
-//   config   — чтение/запись %APPDATA%/ValheimRouge/config.json
-//   commands — Tauri-команды для фронтенда (invoke)
-//   network  — манифест, скачивание, распаковка и проверка файлов
-// Логика живёт в библиотеке, чтобы её можно было тестировать;
-// main.rs лишь вызывает run().
-// ============================================================
+//! ============================================================
+//! Valheim Rouge — Rust-бэкенд лаунчера (Tauri v2)
+//! Модули:
+//!   config   — чтение/запись %APPDATA%/ValheimRouge/config.json
+//!   commands — Tauri-команды для фронтенда (invoke)
+//!   network  — манифест, скачивание и проверка целостности файлов
+//! Логика живёт в библиотеке, чтобы её можно было тестировать;
+//! main.rs лишь вызывает run().
+//! ============================================================
 
 pub mod commands;
 pub mod config;
@@ -16,9 +16,9 @@ pub fn run() {
     // tauri::Builder — стандартная точка входа.
     // generate_handler связывает JS invoke('имя') с #[tauri::command]-функциями.
     tauri::Builder::default()
-        // Плагин диалогов: нужен для «Выбрать папку» в настройках.
+        // Плагин диалогов: нужен для «Выбрать папку» в настройках
         .plugin(tauri_plugin_dialog::init())
-        // Плагин shell: открытие папки игры и логов через open().
+        // Плагин shell: открытие папки игры и логов через open()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_config,
@@ -33,11 +33,9 @@ pub fn run() {
             network::cancel_download,
             network::get_installed_version,
             network::set_installed_version,
-            network::unpack_zip,
-            network::resolve_download_path,
         ])
         .run(tauri::generate_context!())
-        // Стартовый bootstrap: если окно нельзя создать — дальше идти некуда,
+        // Это стартовый bootstrap: если окно нельзя создать — дальше идти некуда,
         // поэтому ожидаемое поведение — падение с понятным сообщением.
         .expect("Ошибка запуска Valheim Rouge: не удалось создать окно приложения");
 }

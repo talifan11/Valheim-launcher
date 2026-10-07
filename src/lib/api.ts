@@ -26,6 +26,7 @@ export function launchGame(gamePath: string): Promise<string> {
 
 /** Открыть системный диалог выбора папки с игрой (plugin: dialog) */
 export async function pickFolder(): Promise<string | null> {
+  // Диалог доступен только внутри Tauri; в браузерной разработке его нет.
   if (!isTauri()) return null;
   const { open } = await import('@tauri-apps/plugin-dialog');
   const selected = await open({
@@ -40,7 +41,7 @@ export async function pickFolder(): Promise<string | null> {
 // Базовый URL раздачи — статика на сервере владельца.
 
 /** Базовый URL каталога раздачи (совпадает с BASE_URL в Rust) */
-export const UPDATE_BASE_URL = 'http://62.217.178.72';
+export const UPDATE_BASE_URL = 'http://62.217.178.72/valheim';
 
 /** Описание файла в манифесте версии */
 export interface ManifestFile {
@@ -111,16 +112,6 @@ export function getInstalledVersion(): Promise<string> {
 /** Запомнить установленную версию в installed.json */
 export function setInstalledVersion(version: string): Promise<void> {
   return invoke('set_installed_version', { version });
-}
-
-/** Получить путь, куда качать файл из манифеста (кэш downloads/) */
-export function resolveDownloadPath(relPath: string): Promise<string> {
-  return invoke<string>('resolve_download_path', { relPath });
-}
-
-/** Распаковать ZIP-архив в целевую папку. Возвращает число файлов */
-export function unpackZip(zipPath: string, destDir: string): Promise<number> {
-  return invoke<number>('unpack_zip', { zipPath, destDir });
 }
 
 /** Подписаться на событие download-progress; возвращает функцию отписки */

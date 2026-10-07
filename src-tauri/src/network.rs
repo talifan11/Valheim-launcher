@@ -34,7 +34,6 @@ pub struct Manifest {
     pub updated: String,
     #[serde(default)]
     pub files: Vec<ManifestFile>,
-    /// Список изменений; отсутствует в старых манифестах — пустой массив по умолчанию.
     #[serde(default)]
     pub changelog: Vec<String>,
 }
@@ -43,7 +42,6 @@ pub struct Manifest {
 #[derive(Debug, Clone, Serialize)]
 pub struct FileStatus {
     pub path: String,
-    /// OK | MISSING | OUTDATED | ERROR
     pub status: String,
     pub size: u64,
 }
@@ -130,7 +128,6 @@ fn parse_manifest_text(text: &str) -> Result<Manifest, String> {
 }
 
 /// Проверяет наличие, размер и SHA-256 каждого файла из манифеста.
-/// Возвращает список статусов: OK / MISSING / OUTDATED / ERROR.
 #[tauri::command]
 pub fn check_files(manifest: Manifest, install_dir: String) -> Result<Vec<FileStatus>, String> {
     if install_dir.trim().is_empty() {
@@ -149,8 +146,7 @@ pub fn check_files(manifest: Manifest, install_dir: String) -> Result<Vec<FileSt
     Ok(statuses)
 }
 
-/// Статус одного файла на диске. Ошибки чтения не валят всю проверку —
-/// файл помечается как ERROR и будет переустановлен.
+/// Статус одного файла на диске.
 fn local_file_status(root: &Path, file: &ManifestFile) -> String {
     let full_path = root.join(&file.path);
     if !full_path.exists() {
@@ -257,7 +253,6 @@ fn run_download(
     let mut last_emit = Instant::now();
     let mut chunk = [0u8; 64 * 1024];
 
-    // Основной цикл приёма тела ответа.
     let mut stream = response;
     loop {
         match stream_chunk(&mut stream, &mut chunk) {
@@ -309,7 +304,7 @@ fn run_download(
     Ok(())
 }
 
-/// Читает следующий кусок тела ответа через трейт Read из blocking-потока.
+/// Читает следующий кусок тела ответа.
 fn stream_chunk(
     stream: &mut reqwest::blocking::Response,
     buffer: &mut [u8],
@@ -333,12 +328,10 @@ fn emit_progress(
         done,
         error,
     };
-    // Событие носит информационный характер: при недоступности окна игнорируем.
     app.emit("download-progress", &payload).ok();
 }
 
-/// Скачивает файлы батчем. Потоков не более трёх: задачи стартуют волнами,
-/// каждый элемент (url, dest, ожидаемый sha256) получает прогресс-события.
+/// Скачивает файлы батчем.
 #[tauri::command]
 pub async fn download_batch(
     app: AppHandle,
@@ -377,7 +370,6 @@ pub async fn download_batch(
             }
         }
 
-        // Отмена прерывает оставшиеся волны.
         if DOWNLOAD_CANCELLED.load(Ordering::Relaxed) {
             break;
         }
@@ -398,11 +390,9 @@ pub fn cancel_download() -> Result<(), String> {
 }
 
 /// Возвращает полный путь, куда лаунчер должен качать файл из манифеста.
-/// Скачивание идёт в кэш %APPDATA%/ValheimRouge/downloads/, а не в game_path.
 #[tauri::command]
 pub fn resolve_download_path(app: AppHandle, rel_path: String) -> Result<String, String> {
     let dir = downloads_dir(&app)?;
-    // Берём только имя файла, чтобы структура манифеста не ломала кэш.
     let name = Path::new(&rel_path)
         .file_name()
         .and_then(|s| s.to_str())
@@ -410,8 +400,7 @@ pub fn resolve_download_path(app: AppHandle, rel_path: String) -> Result<String,
     Ok(dir.join(name).to_string_lossy().to_string())
 }
 
-/// Распаковывает ZIP-архив в целевую папку. Возвращает количество
-/// распакованных файлов. Папка назначения создаётся, если её нет.
+/// Распаковывает ZIP-архив в целевую папку.
 #[tauri::command]
 pub fn unpack_zip(zip_path: String, dest_dir: String) -> Result<usize, String> {
     let src = Path::new(&zip_path);
@@ -432,7 +421,6 @@ pub fn unpack_zip(zip_path: String, dest_dir: String) -> Result<usize, String> {
             .by_index(i)
             .map_err(|e| format!("Ошибка чтения записи {i}: {e}"))?;
 
-        // enclose_name защищает от path traversal вида ../../windows/system32.
         let Some(rel_path) = entry.enclosed_name() else {
             continue;
         };
@@ -494,7 +482,7 @@ pub fn set_installed_version(app: AppHandle, version: String) -> Result<(), Stri
     Ok(())
 }
 
-/// Текущая дата в формате YYYY-MM-DD для метки установки.
+/// Текущая дата в формате YYYY-MM-DD.
 fn current_date_string() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -503,7 +491,7 @@ fn current_date_string() -> String {
     days_to_date(secs / 86400)
 }
 
-/// Гражданская дата из числа дней с 1970-01-01 (алгоритм Howard Hinnant).
+/// Гражданская дата из числа дней с 1970-01-01.
 fn days_to_date(days: i64) -> String {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;

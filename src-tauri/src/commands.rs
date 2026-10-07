@@ -35,7 +35,7 @@ pub fn set_config(app: tauri::AppHandle, config: Config) -> Result<(), String> {
 #[tauri::command]
 pub fn check_game_path(game_path: String) -> Result<bool, String> {
     if game_path.trim().is_empty() {
-        return Ok(false); // путь не настроен — считаем, что игры нет
+        return Ok(false);
     }
     let exe = Path::new(game_path.trim()).join(GAME_EXE);
     Ok(exe.is_file())
@@ -62,7 +62,6 @@ pub fn launch_game(app: tauri::AppHandle, game_path: String) -> Result<String, S
 
     // Сворачиваем окно лаунчера, чтобы не мешало во время игры.
     if let Some(window) = app.get_webview_window("main") {
-        // Ошибку сворачивания игнорируем: игра уже запускается, это косметика.
         let _ = window.minimize();
     }
 

@@ -2,7 +2,7 @@
 // действия берутся из useUpdateStore (бизнес-логика не в компонентах).
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, Loader2, Package, RefreshCw, Server, XCircle } from 'lucide-react';
+import { Download, RefreshCw, Server, XCircle } from 'lucide-react';
 import { VRButton } from '../components/ui';
 import { formatBytes, formatEtaClock, useUpdateStore } from '../store/useUpdateStore';
 import { useLauncherStore } from '../store/useLauncherStore';
@@ -12,7 +12,6 @@ const PHASE_TITLE: Record<string, string> = {
   'needs-install': 'Требуется установка',
   'needs-update': 'Доступно обновление',
   downloading: 'Скачивание',
-  unpacking: 'Распаковка архивов',
   ready: 'Готово к игре',
   error: 'Ошибка обновления',
   idle: 'Проверка не выполнялась',
@@ -21,13 +20,13 @@ const PHASE_TITLE: Record<string, string> = {
 export function InstallScreen() {
   const phase = useUpdateStore((s) => s.phase);
   const manifest = useUpdateStore((s) => s.manifest);
-  const statuses = useUpdateStore((s) => s.statuses) ?? [];
-  const filePercents = useUpdateStore((s) => s.filePercents) ?? {};
-  const overallPercent = useUpdateStore((s) => s.overallPercent) ?? 0;
+  const statuses = useUpdateStore((s) => s.statuses);
+  const filePercents = useUpdateStore((s) => s.filePercents);
+  const overallPercent = useUpdateStore((s) => s.overallPercent);
   const currentFile = useUpdateStore((s) => s.currentFile);
-  const speedMbps = useUpdateStore((s) => s.speedMbps) ?? 0;
-  const etaSeconds = useUpdateStore((s) => s.etaSeconds) ?? 0;
-  const log = useUpdateStore((s) => s.log) ?? [];
+  const speedMbps = useUpdateStore((s) => s.speedMbps);
+  const etaSeconds = useUpdateStore((s) => s.etaSeconds);
+  const log = useUpdateStore((s) => s.log);
   const error = useUpdateStore((s) => s.error);
   const runCheck = useUpdateStore((s) => s.runCheck);
   const startInstall = useUpdateStore((s) => s.startInstall);
@@ -42,12 +41,9 @@ export function InstallScreen() {
     if (phase === 'idle') void runCheck();
   }, [phase, runCheck]);
 
-  const pendingFiles =
-    manifest?.files.filter(
-      (file) => statuses.find((s) => s.path === file.path)?.status !== 'OK'
-    ) ?? [];
-
-  const busyPhase = phase === 'downloading' || phase === 'unpacking';
+  const pendingFiles = manifest?.files.filter(
+    (file) => statuses.find((s) => s.path === file.path)?.status !== 'OK'
+  ) ?? [];
 
   return (
     <div className="flex h-full flex-col gap-4 px-8 py-6">
@@ -62,13 +58,11 @@ export function InstallScreen() {
               {PHASE_TITLE[phase] ?? phase}
             </h1>
             <p className="text-xs text-slate-500">
-              {manifest
-                ? `Версия на сервере: ${manifest.version}`
-                : 'Манифест ещё не загружен'}
+              {manifest ? `Версия на сервере: ${manifest.version}` : 'Манифест ещё не загружен'}
             </p>
           </div>
         </div>
-        {!busyPhase && (
+        {phase !== 'downloading' && (
           <VRButton variant="ghost" onClick={() => void runCheck(true)}>
             <RefreshCw size={15} />
             Проверить снова
@@ -116,9 +110,7 @@ export function InstallScreen() {
         <div className="vr-glass vr-side-block">
           <div className="mb-2 flex items-baseline justify-between text-sm">
             <span className="truncate font-mono text-slate-300">
-              {currentFile
-                ? `Скачивание ${currentFile}… ${overallPercent.toFixed(1)}%`
-                : 'Ожидание данных…'}
+              {currentFile ? `Скачивание ${currentFile}… ${overallPercent.toFixed(1)}%` : 'Ожидание данных…'}
             </span>
             <span className="ml-3 shrink-0 font-mono text-xs text-slate-400">
               {speedMbps.toFixed(1)} МБ/с · осталось {formatEtaClock(etaSeconds)}
@@ -137,22 +129,6 @@ export function InstallScreen() {
               Отмена
             </VRButton>
           </div>
-        </div>
-      )}
-
-      {/* Фаза распаковки: спиннер + сообщение */}
-      {phase === 'unpacking' && (
-        <div className="vr-glass vr-side-block">
-          <div className="flex items-center gap-3 text-sm text-slate-300">
-            <Loader2 size={18} className="animate-spin text-blizzard" />
-            <span className="flex items-center gap-2">
-              <Package size={16} className="text-gold" />
-              Распаковка архивов в папку установки…
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Процесс может занять несколько минут — не закрывайте лаунчер.
-          </p>
         </div>
       )}
 
@@ -176,18 +152,11 @@ export function InstallScreen() {
                 return (
                   <li key={file.path} className="text-sm">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-mono text-slate-300">
-                        {file.path}
-                      </span>
-                      <span className="shrink-0 text-xs text-slate-500">
-                        {formatBytes(file.size)}
-                      </span>
+                      <span className="truncate font-mono text-slate-300">{file.path}</span>
+                      <span className="shrink-0 text-xs text-slate-500">{formatBytes(file.size)}</span>
                     </div>
                     <div className="vr-progress-track mt-1 h-1">
-                      <div
-                        className="vr-progress-fill h-full"
-                        style={{ width: `${percent}%` }}
-                      />
+                      <div className="vr-progress-fill h-full" style={{ width: `${percent}%` }} />
                     </div>
                   </li>
                 );
@@ -221,14 +190,9 @@ export function InstallScreen() {
       </div>
 
       {/* Нижняя панель: запустить установку/обновление */}
-      {(phase === 'needs-install' ||
-        phase === 'needs-update' ||
-        phase === 'error') && (
+      {(phase === 'needs-install' || phase === 'needs-update' || phase === 'error') && (
         <div className="flex justify-end">
-          <VRButton
-            onClick={() => void startInstall()}
-            disabled={!gamePath || !manifest}
-          >
+          <VRButton onClick={() => void startInstall()} disabled={!gamePath || !manifest}>
             <Download size={16} />
             {phase === 'needs-install' ? 'Установить' : 'Обновить'}
           </VRButton>
