@@ -1,1 +1,9 @@
 node_modules/
+dist/
+src-tauri/target/
+*.tar.gz
+*.bundle
+*.b64
+.github_pr_body.md
+restore-valheim-rouge.sh
+tsconfig.tsbuildinfo
