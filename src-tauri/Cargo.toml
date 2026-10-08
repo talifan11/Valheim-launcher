@@ -28,3 +28,5 @@ reqwest = { version = "0.12", features = ["blocking", "json", "stream", "rustls-
 sha2 = "0.10"
 futures = "0.3"
 zip = "8.6.0"
+dirs-next = "2"
+opener = "0.7"

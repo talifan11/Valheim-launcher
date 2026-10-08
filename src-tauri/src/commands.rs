@@ -128,3 +128,41 @@ fn is_host_reachable(host: &str, port: u16) -> bool {
     }
     false
 }
+
+// Открыть папку в системном файловом менеджере.
+// Windows: explorer.exe. macOS: open. Linux: xdg-open.
+#[tauri::command]
+pub fn open_folder(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Путь не задан".to_string());
+    }
+    let p = Path::new(trimmed);
+    if !p.exists() {
+        return Err(format!("Папка не существует: {}", trimmed));
+    }
+
+    #[cfg(windows)]
+    {
+        Command::new("explorer")
+            .arg(trimmed)
+            .spawn()
+            .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(trimmed)
+            .spawn()
+            .map_err(|e| format!("Не удалось открыть Finder: {e}"))?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(trimmed)
+            .spawn()
+            .map_err(|e| format!("Не удалось открыть файловый менеджер: {e}"))?;
+    }
+
+    Ok(())
+}

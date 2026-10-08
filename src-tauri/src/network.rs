@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, Manager};
 use zip::ZipArchive;
+use crate::logger;
 
 /// Базовый URL раздачи файлов игры (статика на сервере владельца).
 pub const BASE_URL: &str = "http://62.217.178.72";
@@ -521,4 +522,145 @@ pub fn check_cached_zip(app: AppHandle, rel_path: String, expected_sha256: Strin
     }
     let actual = sha256_of_file(&full)?;
     Ok(actual.eq_ignore_ascii_case(&expected_sha256))
+}
+
+// Информация о версии лаунчера на сервере.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LauncherVersion {
+    pub version: String,
+    pub download_url: String,
+    #[serde(default)]
+    pub release_notes: String,
+    #[serde(default)]
+    pub published_at: String,
+}
+
+// Проверка обновления лаунчера: скачивает launcher-version.json
+// и сравнивает semver с текущей версией.
+#[tauri::command]
+pub fn check_launcher_update(current_version: String) -> Result<Option<LauncherVersion>, String> {
+    let url = format!("{}/launcher-version.json", BASE_URL);
+    let response = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("HTTP-клиент: {e}"))?
+        .get(&url)
+        .send()
+        .map_err(|e| format!("Запрос версии лаунчера: {e}"))?;
+
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let bytes = response.bytes().map_err(|e| format!("Чтение ответа: {e}"))?;
+    let text = String::from_utf8(bytes.to_vec())
+        .map_err(|_| "Ответ не UTF-8".to_string())?;
+
+    let info: LauncherVersion = serde_json::from_str(&text)
+        .map_err(|e| format!("Некорректный launcher-version.json: {e}"))?;
+
+    if is_newer_version(&info.version, &current_version) {
+        Ok(Some(info))
+    } else {
+        Ok(None)
+    }
+}
+
+// Сравнение semver-подобных строк: "0.2.0" > "0.1.5"
+fn is_newer_version(remote: &str, current: &str) -> bool {
+    let parse = |s: &str| -> Vec<u32> {
+        s.split('.')
+            .filter_map(|p| p.trim().parse::<u32>().ok())
+            .collect()
+    };
+    let r = parse(remote);
+    let c = parse(current);
+    for i in 0..3 {
+        let rv = r.get(i).copied().unwrap_or(0);
+        let cv = c.get(i).copied().unwrap_or(0);
+        if rv > cv { return true; }
+        if rv < cv { return false; }
+    }
+    false
+}
+
+// Скачивает установщик по URL и запускает его.
+// После запуска установщика приложение должно закрыться.
+#[tauri::command]
+pub fn download_and_install_update(_app: AppHandle, url: String) -> Result<(), String> {
+    logger::log_info("Updater", &format!("Начало обновления: {url}"));
+
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let updates_dir = dirs_next::data_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("ValheimRouge")
+        .join("updates")
+        .join(format!("update-{unique}"));
+
+    std::fs::create_dir_all(&updates_dir)
+        .map_err(|e| format!("Не удалось создать папку обновлений: {e}"))?;
+
+    let url_path = url.split('?').next().unwrap_or(&url);
+    let filename = url_path.split('/').last().unwrap_or("update.exe");
+    let dest = updates_dir.join(filename);
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| format!("HTTP-клиент: {e}"))?;
+
+    let response = client
+        .get(&url)
+        .send()
+        .map_err(|e| format!("Не удалось начать скачивание: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Ошибка скачивания: HTTP {}", response.status().as_u16()));
+    }
+
+    let mut file = File::create(&dest)
+        .map_err(|e| format!("Не удалось создать файл: {e}"))?;
+
+    let mut content = response;
+    std::io::copy(&mut content, &mut file)
+        .map_err(|e| format!("Ошибка записи: {e}"))?;
+
+    drop(file);
+
+    logger::log_info("Updater", &format!("Установщик скачан: {}", dest.display()));
+
+    // Даём антивирусу время закончить сканирование
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+    // Пробуем запустить через opener (использует ShellExecute на Windows)
+    let mut last_err = String::new();
+    let mut success = false;
+
+    for attempt in 1..=5 {
+        match opener::open(&dest) {
+            Ok(_) => {
+                success = true;
+                logger::log_info("Updater", &format!("Установщик запущен (попытка {attempt})"));
+                break;
+            }
+            Err(e) => {
+                last_err = e.to_string();
+                logger::log_warn("Updater", &format!("Попытка {attempt}: {last_err}"));
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+            }
+        }
+    }
+
+    if !success {
+        return Err(format!("Не удалось запустить установщик: {last_err}"));
+    }
+
+    // Закрываем лаунчер, чтобы установщик мог заменить файлы
+    std::thread::sleep(std::time::Duration::from_millis(800));
+    logger::log_info("Updater", "Закрываем приложение для установки.");
+    std::process::exit(0);
 }

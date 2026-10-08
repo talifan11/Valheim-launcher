@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { Star } from 'lucide-react';
 import { ShieldLogo } from '../ShieldLogo';
+import { news } from '../../data/news';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
 
 export function HeroSection() {
   const [imgError, setImgError] = useState(false);
+  const favIds = useFavoritesStore((s) => s.ids);
+  const toggleFav = useFavoritesStore((s) => s.toggle);
+
+  const featured = news[0];
+  const isFav = featured ? favIds.includes(featured.id) : false;
+
+  const handleFav = () => {
+    if (!featured) return;
+    toggleFav(featured.id);
+  };
 
   return (
     <div className="relative w-full rounded-[24px] overflow-hidden border border-white/[0.06] shadow-[0_24px_64px_rgba(0,0,0,0.55)]">
@@ -47,10 +59,15 @@ export function HeroSection() {
           <div>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/15 text-white font-semibold text-xs uppercase tracking-[0.15em] hover:bg-white/5 hover:border-white/25 transition-all duration-300"
+              onClick={handleFav}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-xs uppercase tracking-[0.15em] transition-all duration-300 ${
+                isFav
+                  ? 'bg-gold/15 border border-gold/40 text-gold'
+                  : 'border border-white/15 text-white hover:bg-white/5 hover:border-white/25'
+              }`}
             >
-              <Star size={14} />
-              В ИЗБРАННОЕ
+              <Star size={14} fill={isFav ? 'currentColor' : 'none'} />
+              {isFav ? 'В избранном' : 'В избранное'}
             </button>
           </div>
         </div>

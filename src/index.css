@@ -228,3 +228,56 @@ button {
   box-shadow: 0 0 12px rgba(14, 156, 255, 0.7);
   transition: width 0.3s ease;
 }
+
+/* === Плотный фон для выпадающих меню и модалок === */
+.glass-popover {
+  background: linear-gradient(180deg, rgba(22, 28, 40, 0.98) 0%, rgba(13, 17, 26, 0.99) 100%);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Тёмный оверлей для модалок — чуть плотнее */
+.modal-backdrop {
+  background: rgba(5, 8, 14, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* === ТЕМЫ ===
+   Меняются через атрибут data-theme на <html>.
+   По умолчанию — dark. */
+
+html {
+  --theme-bg-1: #0a0e14;
+  --theme-bg-2: #0f1420;
+  --theme-accent-tint: rgba(74, 158, 255, 0.03);
+}
+
+html[data-theme="navy"] {
+  --theme-bg-1: #0a1428;
+  --theme-bg-2: #142242;
+  --theme-accent-tint: rgba(74, 158, 255, 0.06);
+}
+
+html[data-theme="charcoal"] {
+  --theme-bg-1: #1a1a1a;
+  --theme-bg-2: #262626;
+  --theme-accent-tint: rgba(255, 255, 255, 0.02);
+}
+
+body {
+  background: var(--theme-bg-1);
+}
+
+/* Паттерн-градиент на фоне использует переменные */
+.theme-bg {
+  background:
+    radial-gradient(1100px 520px at 78% -10%, var(--theme-accent-tint), transparent 60%),
+    radial-gradient(900px 600px at 12% 110%, var(--theme-accent-tint), transparent 65%),
+    linear-gradient(180deg, var(--theme-bg-1) 0%, var(--theme-bg-2) 55%, var(--theme-bg-1) 100%);
+}

@@ -10,10 +10,23 @@ import {
   Check,
   Globe,
   MessageCircle,
+  Trash2,
+  AlertTriangle,
+  ScrollText,
+  Palette,
 } from 'lucide-react';
 import { useLauncherStore } from '../store/useLauncherStore';
 import { useUpdateStore } from '../store/useUpdateStore';
-import { pickFolder, openInShell } from '../lib/api';
+import { useFriendsStore } from '../store/useFriendsStore';
+import { useChatStore } from '../store/useChatStore';
+import { useEventsStore } from '../store/useEventsStore';
+import { useModsStore } from '../store/useModsStore';
+import { useNotificationsStore } from '../store/useNotificationsStore';
+import { toast } from '../store/useToastStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useAppSettingsStore, type Theme, type Language } from '../store/useAppSettingsStore';
+import { pickFolder, openInShell, openFolder } from '../lib/api';
+import { invoke } from '@tauri-apps/api/core';
 import { LAUNCHER_VERSION, COMMUNITY_LINKS } from '../config';
 
 interface Props {
@@ -21,13 +34,16 @@ interface Props {
   onClose: () => void;
 }
 
-type Section = 'game' | 'server' | 'updates' | 'about';
+type Section = 'game' | 'server' | 'updates' | 'logs' | 'app' | 'about' | 'reset';
 
 const SECTIONS: Array<{ id: Section; label: string; icon: typeof FolderOpen }> = [
   { id: 'game', label: 'Игровой клиент', icon: FolderOpen },
   { id: 'server', label: 'Сервер', icon: Server },
   { id: 'updates', label: 'Обновления', icon: Download },
+  { id: 'logs', label: 'Логи', icon: ScrollText },
+  { id: 'app', label: 'Приложение', icon: Palette },
   { id: 'about', label: 'О лаунчере', icon: Info },
+  { id: 'reset', label: 'Сброс', icon: Trash2 },
 ];
 
 export function SettingsModal({ open, onClose }: Props) {
@@ -72,7 +88,7 @@ export function SettingsModal({ open, onClose }: Props) {
     const path = gamePathDraft.trim();
     if (!path) return;
     try {
-      await openInShell(path);
+      await openFolder(path);
     } catch (err) {
       console.error('Open folder failed', err);
     }
@@ -113,17 +129,16 @@ export function SettingsModal({ open, onClose }: Props) {
           transition={{ duration: 0.2 }}
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-abyss/80 backdrop-blur-md" />
+          <div className="absolute inset-0 modal-backdrop" />
 
           <motion.div
-            className="relative w-[820px] max-w-full h-[560px] max-h-[90vh] glass-strong rounded-[24px] overflow-hidden shadow-glass flex"
+            className="relative w-[820px] max-w-full h-[560px] max-h-[90vh] glass-popover rounded-[24px] overflow-hidden flex"
             initial={{ scale: 0.95, y: 16, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 16, opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Левая колонка — список секций */}
             <div className="w-56 shrink-0 border-r border-white/[0.06] p-3 flex flex-col">
               <div className="px-3 pt-3 pb-5">
                 <h2 className="font-display text-lg tracking-wide text-white">Настройки</h2>
@@ -133,6 +148,7 @@ export function SettingsModal({ open, onClose }: Props) {
               <div className="flex flex-col gap-1">
                 {SECTIONS.map(({ id, label, icon: Icon }) => {
                   const isActive = activeSection === id;
+                  const isDanger = id === 'reset';
                   return (
                     <button
                       key={id}
@@ -140,8 +156,12 @@ export function SettingsModal({ open, onClose }: Props) {
                       onClick={() => setActiveSection(id)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 text-left ${
                         isActive
-                          ? 'bg-white/[0.07] text-white'
-                          : 'text-slate-400 hover:bg-white/[0.03] hover:text-white'
+                          ? isDanger
+                            ? 'bg-blood/15 text-blood'
+                            : 'bg-white/[0.07] text-white'
+                          : isDanger
+                            ? 'text-blood/70 hover:bg-blood/10 hover:text-blood'
+                            : 'text-slate-400 hover:bg-white/[0.03] hover:text-white'
                       }`}
                     >
                       <Icon size={16} strokeWidth={1.6} />
@@ -156,9 +176,7 @@ export function SettingsModal({ open, onClose }: Props) {
               </div>
             </div>
 
-            {/* Правая часть — контент активной секции */}
             <div className="flex-1 flex flex-col min-w-0">
-              {/* Верхняя панель с кнопкой закрытия */}
               <div className="flex items-center justify-end px-5 pt-4 pb-2">
                 <button
                   type="button"
@@ -170,7 +188,6 @@ export function SettingsModal({ open, onClose }: Props) {
                 </button>
               </div>
 
-              {/* Скроллируемый контент */}
               <div className="flex-1 overflow-y-auto vr-scroll px-6 pb-6">
                 {activeSection === 'game' && (
                   <SectionGame
@@ -193,9 +210,10 @@ export function SettingsModal({ open, onClose }: Props) {
                     checking={checking}
                   />
                 )}
-                {activeSection === 'about' && (
-                  <SectionAbout onOpenLink={openLink} />
-                )}
+                {activeSection === 'logs' && <SectionLogs />}
+                {activeSection === 'app' && <SectionApp />}
+                {activeSection === 'about' && <SectionAbout onOpenLink={openLink} />}
+                {activeSection === 'reset' && <SectionReset onClose={onClose} />}
               </div>
             </div>
           </motion.div>
@@ -204,10 +222,6 @@ export function SettingsModal({ open, onClose }: Props) {
     </AnimatePresence>
   );
 }
-
-// ============================================================
-// Секция: Игровой клиент
-// ============================================================
 
 interface SectionGameProps {
   draft: string;
@@ -272,15 +286,11 @@ function SectionGame({ draft, onChange, onPick, onOpen, onSave, pathChanged, sav
 
       <Hint>
         В папке должен лежать файл <code className="font-mono text-gold">valheim.exe</code>.
-        Если игра ещё не установлена, пропустите этот шаг — путь можно задать после установки.
+        Если игра ещё не установлена, пропустите этот шаг.
       </Hint>
     </div>
   );
 }
-
-// ============================================================
-// Секция: Сервер
-// ============================================================
 
 function SectionServer() {
   const config = useLauncherStore((s) => s.config);
@@ -334,10 +344,6 @@ function SectionServer() {
     </div>
   );
 }
-
-// ============================================================
-// Секция: Обновления
-// ============================================================
 
 interface SectionUpdatesProps {
   phase: string;
@@ -407,14 +413,32 @@ function SectionUpdates({ phase, manifestVersion, installedVersion, onCheckNow, 
   );
 }
 
-// ============================================================
-// Секция: О лаунчере
-// ============================================================
-
 function SectionAbout({ onOpenLink }: { onOpenLink: (url: string) => void }) {
+  const startOnboarding = useOnboardingStore((s) => s.start);
+
+  const handleReplayTutorial = () => {
+    startOnboarding();
+  };
+
   return (
     <div className="space-y-6">
       <Header title="О лаунчере" subtitle="Информация и ссылки" />
+
+      <div className="glass rounded-xl p-4 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-white mb-0.5">Обучение</div>
+          <div className="text-[11px] text-slate-500">
+            Пройдите быстрый тур по лаунчеру ещё раз
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleReplayTutorial}
+          className="px-3.5 py-2 rounded-lg border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-wider hover:bg-gold/10 transition-all shrink-0"
+        >
+          Показать
+        </button>
+      </div>
 
       <div className="glass rounded-xl p-5 space-y-3">
         <div className="flex items-center gap-3">
@@ -457,9 +481,82 @@ function SectionAbout({ onOpenLink }: { onOpenLink: (url: string) => void }) {
   );
 }
 
-// ============================================================
-// Мелкие переиспользуемые компоненты
-// ============================================================
+function SectionReset({ onClose }: { onClose: () => void }) {
+  const resetFriends = useFriendsStore((s) => s.reset);
+  const resetChat = useChatStore((s) => s.reset);
+  const resetEvents = useEventsStore((s) => s.reset);
+  const resetMods = useModsStore((s) => s.reset);
+  const resetNotifs = useNotificationsStore((s) => s.reset);
+  const [confirm, setConfirm] = useState(false);
+
+  const handleReset = () => {
+    resetFriends();
+    resetChat();
+    resetEvents();
+    resetMods();
+    resetNotifs();
+    toast.success('Все данные сброшены к дефолтным');
+    setConfirm(false);
+    onClose();
+  };
+
+  return (
+    <div className="space-y-6">
+      <Header
+        title="Сброс данных"
+        subtitle="Вернуть друзей, чат, события и моды к начальному состоянию"
+      />
+
+      <div className="glass rounded-xl p-5 border-blood/20 space-y-3">
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={20} className="text-blood shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-blood mb-1">Внимание</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Все локальные данные (друзья, история чата, участие в событиях,
+              настройки модов, уведомления) будут удалены и заменены на
+              начальные. Это действие нельзя отменить.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {!confirm ? (
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          className="px-4 py-2.5 rounded-xl bg-blood/15 border border-blood/40 text-blood text-sm font-semibold hover:bg-blood/25 transition-all flex items-center gap-2"
+        >
+          <Trash2 size={15} />
+          Сбросить данные
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="px-4 py-2.5 rounded-xl bg-blood text-white text-sm font-semibold hover:shadow-[0_0_24px_rgba(255,85,102,0.5)] transition-all flex items-center gap-2"
+          >
+            <Trash2 size={15} />
+            Да, сбросить всё
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(false)}
+            className="px-4 py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5 transition-all"
+          >
+            Отмена
+          </button>
+        </div>
+      )}
+
+      <Hint>
+        Настройки игры и адрес сервера не сбрасываются — они хранятся
+        в отдельном файле config.json.
+      </Hint>
+    </div>
+  );
+}
 
 function Header({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -495,6 +592,266 @@ function InfoCell({ label, value, mono }: { label: string; value: string; mono?:
       <div className={`text-sm text-slate-200 truncate ${mono ? 'font-mono' : ''}`} title={value}>
         {value}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Секция: Логи
+// ============================================================
+
+function SectionLogs() {
+  const [logsText, setLogsText] = useState('');
+  const [logsPath, setLogsPath] = useState('');
+  const [loading, setLoading] = useState(false);
+  const loadLogs = async () => {
+    setLoading(true);
+    try {
+      const path = await invoke<string>('get_logs_path');
+      setLogsPath(path);
+      const text = await invoke<string>('read_logs', { maxLines: 300 });
+      setLogsText(text);
+    } catch (err) {
+      console.error('Ошибка чтения логов:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadLogs();
+  }, []);
+
+  const handleOpenFolder = async () => {
+    if (!logsPath) return;
+    try {
+      await openFolder(logsPath);
+    } catch (err) {
+      console.error('Не удалось открыть папку логов:', err);
+    }
+  };
+
+  const handleClear = async () => {
+    try {
+      await invoke('clear_logs');
+      toast.success('Логи очищены');
+      void loadLogs();
+    } catch (err) {
+      console.error('Ошибка очистки логов:', err);
+      toast.error('Не удалось очистить логи');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Header
+        title="Логи"
+        subtitle="Журнал работы лаунчера для диагностики проблем"
+      />
+
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={handleOpenFolder}
+          className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-sm text-slate-300 hover:bg-white/5 hover:border-white/20 transition-all flex items-center gap-2"
+        >
+          <FolderOpen size={15} />
+          Открыть папку
+        </button>
+        <button
+          type="button"
+          onClick={() => void loadLogs()}
+          className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-sm text-slate-300 hover:bg-white/5 hover:border-white/20 transition-all flex items-center gap-2"
+        >
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          Обновить
+        </button>
+        <button
+          type="button"
+          onClick={handleClear}
+          className="px-4 py-2.5 rounded-xl border border-blood/30 text-sm text-blood hover:bg-blood/10 transition-all flex items-center gap-2"
+        >
+          <Trash2 size={15} />
+          Очистить
+        </button>
+      </div>
+
+      <div className="glass rounded-xl p-3">
+        <div className="text-[10px] uppercase tracking-[0.15em] text-slate-500 font-bold mb-2 px-1">
+          Последние 300 строк
+        </div>
+        <pre className="bg-black/40 rounded-lg p-3 text-[11px] font-mono text-slate-300 leading-relaxed overflow-auto max-h-[280px] vr-scroll whitespace-pre-wrap break-words">
+{logsText || 'Логи пусты.'}
+        </pre>
+      </div>
+
+      {logsPath && (
+        <div className="text-[10px] text-slate-600 font-mono break-all">
+          Путь: {logsPath}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Секция: Приложение (тема, язык, поведение)
+// ============================================================
+
+function SectionApp() {
+  const theme = useAppSettingsStore((s) => s.theme);
+  const setTheme = useAppSettingsStore((s) => s.setTheme);
+  const language = useAppSettingsStore((s) => s.language);
+  const setLanguage = useAppSettingsStore((s) => s.setLanguage);
+  const soundEnabled = useAppSettingsStore((s) => s.soundEnabled);
+  const toggleSound = useAppSettingsStore((s) => s.toggleSound);
+  const notificationsEnabled = useAppSettingsStore((s) => s.notificationsEnabled);
+  const toggleNotifications = useAppSettingsStore((s) => s.toggleNotifications);
+  const checkUpdatesOnStart = useAppSettingsStore((s) => s.checkUpdatesOnStart);
+  const toggleCheckUpdates = useAppSettingsStore((s) => s.toggleCheckUpdates);
+  const autoLaunchGame = useAppSettingsStore((s) => s.autoLaunchGame);
+  const toggleAutoLaunch = useAppSettingsStore((s) => s.toggleAutoLaunch);
+  const minimizeToTray = useAppSettingsStore((s) => s.minimizeToTray);
+  const toggleMinimizeToTray = useAppSettingsStore((s) => s.toggleMinimizeToTray);
+
+  const themes: Array<{ id: Theme; label: string; preview: string }> = [
+    { id: 'dark', label: 'Тёмная', preview: 'linear-gradient(135deg, #0a0e14, #1a2333)' },
+    { id: 'navy', label: 'Тёмно-синяя', preview: 'linear-gradient(135deg, #0a1428, #1a2848)' },
+    { id: 'charcoal', label: 'Угольная', preview: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Header title="Приложение" subtitle="Внешний вид и поведение лаунчера" />
+
+      {/* Тема */}
+      <div>
+        <Label text="Тема интерфейса" />
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {themes.map((t) => {
+            const active = t.id === theme;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTheme(t.id)}
+                className={`rounded-xl border p-3 transition-all ${
+                  active
+                    ? 'border-gold shadow-glow-gold'
+                    : 'border-white/10 hover:border-white/25'
+                }`}
+              >
+                <div
+                  className="w-full h-12 rounded-lg mb-2 border border-white/10"
+                  style={{ background: t.preview }}
+                />
+                <div
+                  className={`text-[11px] font-semibold text-center ${
+                    active ? 'text-gold' : 'text-slate-400'
+                  }`}
+                >
+                  {t.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[10px] text-slate-600 mt-2 font-mono">
+          Применение темы появится в следующем обновлении
+        </div>
+      </div>
+
+      {/* Язык */}
+      <div>
+        <Label text="Язык интерфейса" />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {(['ru', 'en'] as Language[]).map((lang) => {
+            const active = lang === language;
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${
+                  active
+                    ? 'border-gold bg-gold/10 text-gold'
+                    : 'border-white/10 text-slate-300 hover:border-white/25'
+                }`}
+              >
+                {lang === 'ru' ? 'Русский' : 'English'}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Переключатели */}
+      <div className="space-y-2">
+        <Label text="Поведение" />
+
+        <ToggleRow
+          label="Звук уведомлений"
+          description="Короткий сигнал при новых сообщениях и событиях"
+          value={soundEnabled}
+          onToggle={toggleSound}
+        />
+        <ToggleRow
+          label="Уведомления"
+          description="Всплывающие уведомления о событиях сервера"
+          value={notificationsEnabled}
+          onToggle={toggleNotifications}
+        />
+        <ToggleRow
+          label="Проверять обновления при запуске"
+          description="Лаунчер сам проверяет свою версию"
+          value={checkUpdatesOnStart}
+          onToggle={toggleCheckUpdates}
+        />
+        <ToggleRow
+          label="Автозапуск игры"
+          description="Запускать Valheim после завершения установки"
+          value={autoLaunchGame}
+          onToggle={toggleAutoLaunch}
+        />
+        <ToggleRow
+          label="Сворачивать в трей"
+          description="При закрытии окна лаунчер остаётся в трее"
+          value={minimizeToTray}
+          onToggle={toggleMinimizeToTray}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface ToggleRowProps {
+  label: string;
+  description: string;
+  value: boolean;
+  onToggle: () => void;
+}
+
+function ToggleRow({ label, description, value, onToggle }: ToggleRowProps) {
+  return (
+    <div className="glass rounded-xl p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-white">{label}</div>
+        <div className="text-[11px] text-slate-500 mt-0.5">{description}</div>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`relative w-12 h-6 rounded-full transition-all duration-300 shrink-0 ${
+          value ? 'bg-emerald' : 'bg-white/10'
+        }`}
+        title={value ? 'Выключить' : 'Включить'}
+      >
+        <span
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-300 ${
+            value ? 'left-6' : 'left-0.5'
+          }`}
+        />
+      </button>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Settings, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { useLauncherStore } from '../../store/useLauncherStore';
 import { ShieldLogo } from '../ShieldLogo';
+import { ProfileMenu } from '../profile/ProfileMenu';
+import { NotificationsMenu } from '../notifications/NotificationsMenu';
 
 export type ConnectionState = 'checking' | 'online' | 'active' | 'offline';
 
@@ -18,7 +20,6 @@ const STATUS_LABEL: Record<ConnectionState, string> = {
 
 export function FloatingTopBar({ connection }: Props) {
   const config = useLauncherStore((s) => s.config);
-  const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
   const [copied, setCopied] = useState(false);
 
   const dotClass =
@@ -40,11 +41,10 @@ export function FloatingTopBar({ connection }: Props) {
     }
   };
 
-  const initial = (config.username || 'И')[0].toUpperCase();
-
   return (
     <div className="float-topbar-wrap animate-fade-in-up" data-tauri-drag-region>
-      <div className="float-topbar glass-strong flex items-center gap-3 h-14 px-4 rounded-[28px] overflow-hidden">
+      <div className="float-topbar glass-strong flex items-center gap-3 h-14 px-4 rounded-[28px] overflow-visible"
+        data-onboarding="topbar">
         <span className="text-gold shrink-0">
           <ShieldLogo size={22} />
         </span>
@@ -75,23 +75,9 @@ export function FloatingTopBar({ connection }: Props) {
 
         <span className="w-px h-6 bg-white/10 shrink-0" />
 
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="text-slate-400 hover:text-white transition-colors duration-200 shrink-0"
-          title="Настройки"
-        >
-          <Settings size={15} />
-        </button>
+        <NotificationsMenu />
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-[#b8941f] flex items-center justify-center text-xs font-bold text-abyss">
-            {initial}
-          </span>
-          <span className="text-xs text-slate-300 truncate max-w-[100px]">
-            {config.username || 'Игрок'}
-          </span>
-        </div>
+        <ProfileMenu />
       </div>
     </div>
   );

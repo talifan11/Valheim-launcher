@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Newspaper } from 'lucide-react';
 import { news, type NewsItem } from '../../data/news';
 
 const FALLBACKS = [
@@ -8,12 +9,19 @@ const FALLBACKS = [
   'linear-gradient(135deg, #1a3025 0%, #0a0e14 100%)',
 ];
 
-function NewsCard({ item }: { item: NewsItem }) {
+interface Props {
+  onOpenNews: (item: NewsItem) => void;
+}
+
+function NewsCard({ item, onClick }: { item: NewsItem; onClick: () => void }) {
   const [error, setError] = useState(false);
   const fallback = FALLBACKS[Math.abs(item.id) % FALLBACKS.length];
 
   return (
-    <article className="group relative glass rounded-[18px] overflow-hidden cursor-pointer hover:-translate-y-1 hover:border-gold/30 transition-all duration-300">
+    <article
+      onClick={onClick}
+      className="group relative glass rounded-[18px] overflow-hidden cursor-pointer hover:-translate-y-1 hover:border-gold/30 transition-all duration-300"
+    >
       <div className="relative h-32 overflow-hidden">
         {!error ? (
           <img
@@ -24,7 +32,9 @@ function NewsCard({ item }: { item: NewsItem }) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full" style={{ background: fallback }} />
+          <div className="w-full h-full flex items-center justify-center" style={{ background: fallback }}>
+            <Newspaper size={32} className="text-slate-600" />
+          </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#141923] via-transparent to-transparent" />
       </div>
@@ -43,7 +53,7 @@ function NewsCard({ item }: { item: NewsItem }) {
   );
 }
 
-export function NewsGrid() {
+export function NewsGrid({ onOpenNews }: Props) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3 px-1">
@@ -55,7 +65,7 @@ export function NewsGrid() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {news.map((item, i) => (
           <div key={item.id} className="animate-fade-in-up" style={{ animationDelay: `${0.15 + i * 0.05}s` }}>
-            <NewsCard item={item} />
+            <NewsCard item={item} onClick={() => onOpenNews(item)} />
           </div>
         ))}
       </div>

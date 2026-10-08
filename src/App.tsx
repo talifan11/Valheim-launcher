@@ -8,6 +8,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { VRButton, VRModal } from './components/ui';
 import { useLauncherStore } from './store/useLauncherStore';
 import { useUpdateStore } from './store/useUpdateStore';
+import { useAppSettingsStore } from './store/useAppSettingsStore';
 import { DEV_SKIP_UPDATE } from './config';
 import type { ConnectionState } from './components/layout/FloatingTopBar';
 
@@ -22,6 +23,12 @@ export default function App() {
   const runCheck = useUpdateStore((s) => s.runCheck);
 
   const [connection, setConnection] = useState<ConnectionState>('checking');
+
+  // Применяем тему через data-theme на <html>
+  const theme = useAppSettingsStore((s) => s.theme);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     void loadConfig();

@@ -147,3 +147,18 @@ export function isTauri(): boolean {
 export function checkCachedZip(relPath: string, expectedSha256: string): Promise<boolean> {
   return invoke<boolean>('check_cached_zip', { relPath, expectedSha256 });
 }
+
+/** Получить путь, куда качать файл из манифеста (кэш downloads/). */
+export function resolveDownloadPath(relPath: string): Promise<string> {
+  return invoke<string>('resolve_download_path', { relPath });
+}
+
+/** Распаковать ZIP-архив в целевую папку. Возвращает число файлов. */
+export function unpackZip(zipPath: string, destDir: string): Promise<number> {
+  return invoke<number>('unpack_zip', { zipPath, destDir });
+}
+
+/** Открыть папку в системном проводнике (через нативную Rust-команду). */
+export function openFolder(path: string): Promise<void> {
+  return invoke('open_folder', { path });
+}

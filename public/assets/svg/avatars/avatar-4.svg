@@ -1,0 +1,15 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="g-avatar-4" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#c56b4a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#3b1e15" stop-opacity="0.9"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#g-avatar-4)" stroke="#c56b4a" stroke-width="1.5" stroke-opacity="0.6"/>
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#c56b4a" stroke-width="0.5" stroke-opacity="0.3"/>
+  <g fill="#c56b4a" opacity="0.85">
+    <text x="32" y="40" font-family="Cinzel, serif" font-size="18" font-weight="700" text-anchor="middle" fill="#c56b4a">М</text>
+  </g>
+  <path d="M 14 14 L 20 14 M 14 14 L 14 20" stroke="#c56b4a" stroke-width="1" fill="none" opacity="0.5"/>
+  <path d="M 50 50 L 44 50 M 50 50 L 50 44" stroke="#c56b4a" stroke-width="1" fill="none" opacity="0.5"/>
+</svg>
