@@ -1,6 +1,4 @@
-from pathlib import Path
-ROOT = Path(__file__).parent
-state = """# Valheim Rouge — состояние проекта
+# Valheim Rouge — состояние проекта
 
 ## Что это
 Лаунчер Valheim на Tauri v2 + React 18 + Rust.
@@ -24,7 +22,7 @@ state = """# Valheim Rouge — состояние проекта
 - vite.config.ts: watch.ignored = ['**/src-tauri/**']
 
 ## Пути
-- Проект: Z:\\ValheinRogue\\Launcher
+- Проект: Z:\ValheinRogue\Launcher
 - Установщик: src-tauri/target/release/bundle/nsis/
 - На VPS: /var/www/valheim/launcher/
 
@@ -37,6 +35,3 @@ state = """# Valheim Rouge — состояние проекта
 - CI/CD (GitHub Actions)
 - Фидбек от корешей
 - Реальный API для друзей/чата
-"""
-(ROOT / 'PROJECT_STATE.md').write_text(state, encoding='utf-8')
-print("OK: PROJECT_STATE.md")

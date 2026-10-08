@@ -1,84 +1,51 @@
-# ⚔️ Valheim Rouge
+# Valheim Rouge Launcher
 
-Стильный десктопный лаунчер для пиратской сборки Valheim в духе **Battle.net**:
-тёмная тема, glassmorphism, золотая кнопка «ИГРАТЬ» и живой статус нашего сервера
-`pgsql-louisville.tun.ply.gg:21589`.
+Десктопный лаунчер для игрового сервера Valheim Rouge на Tauri v2 + React 18 + Rust.
 
-## Стек (по ТЗ v2.0)
+## Возможности
 
-| Слой | Технология |
-|---|---|
-| Оболочка | **Tauri v2** (легче Electron в разы — системный WebView) |
-| Бэкенд | **Rust** (`src-tauri/`) |
-| Фронтенд | **React 18 + TypeScript + Vite** |
-| Стиль | **Tailwind CSS** (палитра Blizzard в `tailwind.config.js` / `src/index.css`) |
-| Анимации | **Framer Motion** |
-| Иконки | **Lucide React** |
-| Состояние | **Zustand** (`src/store/useLauncherStore.ts`) |
+- Автоматическая установка и обновление файлов игры
+- Кеширование ZIP-архивов
+- Трёхуровневая проверка статуса сервера
+- Список друзей и онлайн игроков
+- Встроенный чат: общий + личные сообщения
+- Разделы событий, модов, профиля
+- Автообновление лаунчера
+- Логи с ротацией
+- Интерактивное обучение для новых игроков
+- Профиль с 8 аватарами
 
-## Структура
+## Технологии
 
-```
-├── src/                    # React-фронтенд
-│   ├── components/         # TitleBar, LoginScreen, MainScreen, ServerStatus, SettingsModal, ui-кит
-│   ├── store/              # Zustand-стор (конфиг, логин, запуск игры)
-│   ├── lib/api.ts          # типизированная обёртка над Tauri invoke()
-│   └── index.css           # CSS-кит: шрифты, палитра, .vr-glass/.vr-btn-* утилиты
-└── src-tauri/              # Rust-бэкенд
-    ├── src/lib.rs          # сборка приложения, регистрация команд
-    ├── src/commands.rs     # get_config / set_config / check_game_path / launch_game / ping_server
-    ├── src/config.rs       # %APPDATA%/ValheimRouge/config.json
-    └── capabilities/       # права webview (окно + диалоги)
-```
+- Tauri v2, React 18, TypeScript, Vite, Tailwind CSS
+- Zustand, Framer Motion, Lucide React
+- Rust: reqwest, sha2, zip, opener, dirs-next
 
-## Команды
+## Установка
 
-```bash
-npm install            # зависимости фронтенда
-npm run dev            # UI в браузере (без Rust-вызовов, для вёрстки)
-npm run tauri dev      # запуск лаунчера «как есть» (нужен Rust toolchain)
-npm run tauri build    # сборка .exe (bundle → src-tauri/target/release/bundle/)
-```
+Разработка:
 
-> Для `tauri`-команд нужны: [Rust](https://rustup.rs) и системные зависимости
-> (Windows: WebView2 + MSVC; Linux: `libwebkit2gtk-4.1-dev` и т.п. — см. docs).
+    git clone https://github.com/talifan11/Valheim-launcher.git
+    cd Valheim-launcher
+    npm install
+    npm run tauri dev
 
-## Как это работает
+Сборка релиза:
 
-* **Окно без рамки** — `"decorations": false`, шапка с `data-tauri-drag-region`,
-  свои кнопки свернуть/развернуть/закрыть (`TitleBar.tsx`).
-* **Логин-заглушка** — оба поля непустые → внутрь; иначе анимированная ошибка.
-* **PLAY** — Rust проверяет `<game_path>\valheim.exe`, запускает через
-  `std::process::Command` и сворачивает окно лаунчера. Если файла нет — модалка
-  с кнопкой «Выбрать папку» (нативный диалог).
-* **Статус сервера** — честный UDP-пинг протокола Valheim (`SRV~`) из команды
-  `ping_server`, автообновление каждые 15 секунд.
-* **Конфиг** — `%APPDATA%/ValheimRouge/config.json`:
+    npm run tauri build
 
-```json
-{
-  "game_path": "Z:\\Путь\\К\\Игре",
-  "server_address": "pgsql-louisville.tun.ply.gg:21589",
-  "username": "",
-  "theme": "dark"
-}
-```
+Готовый установщик: src-tauri/target/release/bundle/nsis/
 
-## 🚀 Публикация на GitHub
+## Инфраструктура
 
-1. Создай **пустой** репозиторий на GitHub (без README и `.gitignore`).
-2. Запусти скрипт `push-to-github.sh`, передав URL репозитория аргументом:
+- Игровой сервер: 85.198.70.143:2456 (UDP через WireGuard)
+- Раздача файлов: http://62.217.178.72
 
-```bash
-bash push-to-github.sh https://github.com/talifan11/valheim-rouge.git
-# или по SSH:
-bash push-to-github.sh git@github.com:talifan11/valheim-rouge.git
-```
+## Конфигурация
 
-Скрипт сам сделает коммит, настроит `origin`, переименует ветку в `main` и выполнит `git push -u origin main`.
+- Настройки: %APPDATA%/ValheimRouge/config.json
+- Логи: %APPDATA%/ValheimRouge/logs/launcher.log
 
-## Дальше (Фаза 2)
+## Лицензия
 
-* Реальная авторизация по playit.gg-туннелю и генерация join-ссылки
-* Live-карточка сервера: онлайн-игроки, имя мира (расширение `ping_server`)
-* Система обновлений игры через лаунчер
+MIT
