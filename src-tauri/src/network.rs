@@ -505,3 +505,20 @@ fn days_to_date(days: i64) -> String {
     let year = if m <= 2 { y + 1 } else { y };
     format!("{year:04}-{m:02}-{d:02}")
 }
+
+// Проверяет, лежит ли в папке загрузок файл с ожидаемым SHA-256.
+// Используется, чтобы не перекачивать ZIP, если он уже в кеше.
+#[tauri::command]
+pub fn check_cached_zip(app: AppHandle, rel_path: String, expected_sha256: String) -> Result<bool, String> {
+    let dir = downloads_dir(&app)?;
+    let name = Path::new(&rel_path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| format!("Некорректный путь в манифесте: {rel_path}"))?;
+    let full = dir.join(name);
+    if !full.is_file() {
+        return Ok(false);
+    }
+    let actual = sha256_of_file(&full)?;
+    Ok(actual.eq_ignore_ascii_case(&expected_sha256))
+}

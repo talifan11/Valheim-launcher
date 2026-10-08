@@ -1,35 +1,27 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // Подключаем все tsx-файлы src и наш шрифтовой/цветовой CSS-кит из index.css
-  content: ['./index.html', './src/**/*.{ts,tsx}', './src/index.css'],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      // Цветовая палитра в стиле Blizzard / Battle.net
       colors: {
-        abyss: '#05070d',        // почти чёрный фон приложения
-        panel: '#0b1018',        // панели чуть светлее фона
-        steel: '#141b26',        // карточки / инпуты
-        edge: '#232c3b',         // обводки / границы
-        blizzard: {              // акцентный «битвовый» синий
-          DEFAULT: '#0e9cff',
-          dark: '#0a6fc2',
-          glow: 'rgba(14, 156, 255, 0.45)',
-        },
-        gold: {                  // золотой акцент (как у legendary-предметов)
-          DEFAULT: '#ffc24b',
-          dark: '#c98f1e',
-        },
-        emerald: '#2fbf71',      // статус Online
-        blood: '#ff5566',        // статус Offline / ошибки
+        abyss: '#0a0e14',
+        panel: '#141923',
+        steel: '#1a2333',
+        edge: 'rgba(255, 255, 255, 0.08)',
+        gold: '#ffc24b',
+        blizzard: '#0e9cff',
+        emerald: '#2fbf71',
+        blood: '#ff5566',
       },
       fontFamily: {
-        display: ['Cinzel', 'serif'],       // заголовки — эпичный «фэнтезийный» шрифт
+        display: ['Cinzel', 'serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'], // адрес сервера, стат-цифры
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {
-        'glow-blue': '0 0 24px rgba(14, 156, 255, 0.35)',
+        glass: '0 8px 32px rgba(0, 0, 0, 0.45)',
         'glow-gold': '0 0 24px rgba(255, 194, 75, 0.35)',
+        'glow-blue': '0 0 24px rgba(14, 156, 255, 0.3)',
       },
     },
   },

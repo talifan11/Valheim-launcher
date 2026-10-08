@@ -41,7 +41,7 @@ export async function pickFolder(): Promise<string | null> {
 // Базовый URL раздачи — статика на сервере владельца.
 
 /** Базовый URL каталога раздачи (совпадает с BASE_URL в Rust) */
-export const UPDATE_BASE_URL = 'http://62.217.178.72/valheim';
+export const UPDATE_BASE_URL = 'http://62.217.178.72';
 
 /** Описание файла в манифесте версии */
 export interface ManifestFile {
@@ -141,4 +141,9 @@ export async function copyToClipboard(text: string): Promise<void> {
 /** Мини-хелпер: определяем, запущено ли приложение внутри Tauri */
 export function isTauri(): boolean {
   return '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
+}
+
+/** Проверить, есть ли ZIP с правильным хешем в кеше загрузок */
+export function checkCachedZip(relPath: string, expectedSha256: string): Promise<boolean> {
+  return invoke<boolean>('check_cached_zip', { relPath, expectedSha256 });
 }

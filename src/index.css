@@ -1,297 +1,230 @@
-/* Valheim Rouge — базовый CSS-кит (шрифты, палитра, утилиты).
-   Стилистика: Battle.net / Blizzard — тёмная тема + glassmorphism. */
-
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Эпический «фэнтезийный» шрифт для заголовков и «чистый» Inter для UI.
-   В offline-сборке Tauri можно заменить на локальные woff2-файлы из assets. */
 :root {
-  /* Палитра продублирована в tailwind.config.js — здесь она нужна
-     для градиентов и теней внутри @layer-компонентов */
-  --clr-bg: #05070d;
-  --clr-accent: #0e9cff;
-  --clr-gold: #ffc24b;
+  --abyss: #0a0e14;
+  --panel: rgba(20, 25, 35, 0.6);
+  --panel-strong: rgba(20, 25, 35, 0.72);
+  --steel: #1a2333;
+  --edge: rgba(255, 255, 255, 0.08);
+  --gold: #ffc24b;
+  --blizzard: #0e9cff;
+  --emerald: #2fbf71;
+  --blood: #ff5566;
 }
 
-html,
-body,
-#root {
+html, body, #root {
+  margin: 0;
+  padding: 0;
   height: 100%;
-}
-
-body {
-  @apply bg-abyss text-slate-200 font-body antialiased;
-  /* Фоновая «картина»: атмосферный пейзаж из public/backgrounds, если пользователь
-     его положил. Если файла нет — браузер тихо игнорирует слой и остаются градиенты */
-  background-image:
-    linear-gradient(135deg, rgba(10, 14, 20, 0.85) 0%, rgba(10, 14, 20, 0.95) 100%),
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14, 156, 255, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255, 194, 75, 0.06), transparent),
-    radial-gradient(ellipse 50% 60% at 10% 100%, rgba(47, 191, 113, 0.05), transparent),
-    radial-gradient(ellipse at top left, #1a2333 0%, #0a0e14 60%);
-  background-size: cover, auto, auto, auto, auto;
-  background-position: center, center, center, center, center;
-  background-repeat: no-repeat;
+  width: 100%;
   overflow: hidden;
-  user-select: none; /* интерфейс лаунчера не должен «текстовыделяться» */
+  background: var(--abyss);
+  color: #e6edf6;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Подключаем реальную картинку фона отдельным слоем: если /backgrounds/main.jpg
-   отсутствует, правило просто не сработает и останется CSS-градиент выше */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image: url('/backgrounds/main.jpg');
-  background-size: cover;
-  background-position: center;
-  opacity: 0.35;
+* { box-sizing: border-box; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* === GLASSMORPHISM === */
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-strong {
+  background: var(--panel-strong);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* === FLOATING PANELS: центрирование через flex-wrapper === */
+
+.float-topbar-wrap {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
   pointer-events: none;
+  padding: 0 16px;
 }
 
-@layer components {
-  /* Glassmorphism-карточка: полупрозрачность + размытие backdrop */
-  .vr-glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-  }
-
-  /* Кнопка в стиле Blizzard: градиент + свечение при наведении */
-  .vr-btn-primary {
-    @apply relative px-6 py-3 rounded-lg font-semibold tracking-wide text-white
-           transition-all duration-300 cursor-pointer select-none;
-    background: linear-gradient(180deg, #1aa7ff 0%, #0a6fc2 100%);
-    border: 1px solid rgba(120, 200, 255, 0.35);
-  }
-  .vr-btn-primary:hover:not(:disabled) {
-    box-shadow: 0 0 24px rgba(14, 156, 255, 0.55);
-    filter: brightness(1.12);
-  }
-  .vr-btn-primary:disabled {
-    @apply opacity-40 cursor-not-allowed;
-  }
-
-  /* Золотая «легендарная» кнопка ИГРАТЬ (круглая, из старой версии —
-         больше не используется на главном экране, оставлена для модалок) */
-  .vr-btn-play {
-    @apply relative font-display font-bold uppercase tracking-[0.3em] text-black
-           rounded-lg transition-all duration-300 cursor-pointer;
-    background: linear-gradient(180deg, #ffd97a 0%, #f2a93b 55%, #c98f1e 100%);
-    border: 1px solid rgba(255, 225, 150, 0.6);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-  }
-  .vr-btn-play:hover:not(:disabled) {
-    box-shadow: 0 0 36px rgba(255, 194, 75, 0.6);
-  }
-  .vr-btn-play:disabled {
-    @apply opacity-40 cursor-not-allowed;
-  }
-
-  /* Двухколоночный главный экран */
-
-  /* Сетка layout: новости 65% / панель 35%, зазор 24px, поля 32px */
-  .vr-main-grid {
-    @apply grid flex-1 min-h-0 px-8 py-4;
-    grid-template-columns: 65fr 35fr;
-    gap: 24px;
-  }
-
-  /* Разделитель под title bar — тонкая синяя линия */
-  .vr-titlebar-line {
-    border-color: rgba(74, 158, 255, 0.15);
-  }
-
-  /* Лента новостей: скроллящийся столбец карточек с зазором 16px.
-     scrollbar-width/color — для Firefox, webkit-правила ниже — для WebView2 */
-  .vr-news-feed {
-    @apply flex flex-col gap-4 overflow-y-auto pr-2 pb-2;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(74, 158, 255, 0.4) transparent;
-  }
-
-  /* Карточка новости: glass-фон, картинка слева, контент справа */
-  .vr-news-card {
-    @apply flex h-[200px] shrink-0 overflow-hidden rounded-xl border border-white/5;
-    background: rgba(20, 25, 35, 0.6);
-    backdrop-filter: blur(16px);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  .vr-news-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
-
-  /* Картинка новости: 40% ширины, скругление только правых углов */
-  .vr-news-media {
-    @apply relative w-[40%] shrink-0 overflow-hidden rounded-r-xl;
-  }
-  .vr-news-media img {
-    @apply h-full w-full object-cover transition-transform duration-[400ms];
-  }
-  .vr-news-card:hover .vr-news-media img {
-    transform: scale(1.05);
-  }
-  /* Fallback, если jpg отсутствует: градиентный плейсхолдер с иконкой по центру */
-  .vr-news-placeholder {
-    @apply flex h-full w-full items-center justify-center;
-    background: linear-gradient(135deg, #1a2333, #0a0e14);
-  }
-  .vr-news-placeholder svg {
-    @apply text-slate-600;
-  }
-
-  /* Текстовый блок карточки */
-  .vr-news-body {
-    @apply flex min-w-0 flex-1 flex-col justify-center gap-2 p-6;
-  }
-  .vr-news-date {
-    @apply text-[11px] uppercase tracking-[0.1em] text-slate-400;
-  }
-  .vr-news-title {
-    @apply font-display text-[22px] font-semibold leading-snug text-[#e8eef5];
-  }
-  .vr-news-desc {
-    @apply text-sm leading-[1.6] text-[#a5b0c0];
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* Маленькая ghost-кнопка «Читать» */
-  .vr-btn-ghost-sm {
-    @apply mt-1 self-start rounded-md border border-blizzard px-3 py-1.5 text-xs
-           font-medium text-blizzard transition-colors duration-200 cursor-pointer;
-  }
-  .vr-btn-ghost-sm:hover {
-    @apply bg-blizzard text-black;
-  }
-
-  /* Правая колонка: три блока + кнопки внизу.
-     Скроллбар тонкий и тёмно-синий (Firefox-часть) */
-  .vr-side {
-    @apply flex min-h-0 flex-col gap-4 overflow-y-auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(74, 158, 255, 0.4) transparent;
-  }
-  .vr-side-block {
-    @apply shrink-0 p-5;
-  }
-  .vr-side-label {
-    @apply mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8a95a5];
-  }
-
-  /* Прямоугольная кнопка ИГРАТЬ: золото во всю ширину колонки.
-     Компактная (56px), чтобы не доминировать над контентом */
-  .vr-play-btn {
-    @apply flex h-14 w-full items-center justify-center rounded-md font-display
-           text-[18px] font-semibold uppercase tracking-[0.15em] text-[#0a0e14]
-           transition-all duration-300 cursor-pointer;
-    background: linear-gradient(180deg, #d4af37 0%, #b8941f 100%);
-    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.25);
-  }
-  .vr-play-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
-    filter: brightness(1.05);
-  }
-  .vr-play-btn:active:not(:disabled) {
-    transform: translateY(0);
-  }
-  .vr-play-btn:disabled {
-    @apply cursor-not-allowed;
-  }
-  /* Сервер недоступен: кнопка приглушена, тёмная, без тени и свечения */
-  .vr-play-btn-offline {
-    @apply border text-[#6a7585];
-    background: linear-gradient(180deg, #2a2f38 0%, #1a1f28 100%);
-    border-color: rgba(255, 255, 255, 0.06);
-    box-shadow: none;
-  }
-  .vr-play-btn-offline:hover:not(:disabled) {
-    box-shadow: none;
-    filter: none;
-    transform: none;
-  }
-
-  /* Ghost-кнопка «Настройки» под ИГРАТЬ */
-  .vr-btn-settings {
-    @apply flex h-10 w-full items-center justify-center gap-2 rounded-lg border
-           border-edge text-sm text-slate-300 transition-colors duration-200 cursor-pointer;
-  }
-  .vr-btn-settings:hover {
-    @apply border-blizzard/60 text-white;
-  }
-
-  /* Аватар персонажа: круг с золотым градиентом */
-  .vr-avatar {
-    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-full
-           text-[#0a0e14];
-    background: linear-gradient(135deg, #e3c055, #b8941f);
-  }
-
-  /* Таблица статов персонажа */
-  .vr-stats {
-    @apply mt-4 space-y-1.5;
-  }
-  .vr-stat-row {
-    @apply flex items-center justify-between text-sm;
-  }
-  .vr-stat-row dt {
-    @apply text-slate-500;
-  }
-  .vr-stat-row dd {
-    @apply font-mono text-slate-200;
-  }
-
-  /* Маленькая иконочная кнопка (обновить статус / копировать адрес) */
-  .vr-icon-btn {
-    @apply rounded-md border border-edge p-2 text-slate-400 transition-colors
-           hover:border-blizzard/60 hover:text-white cursor-pointer;
-  }
-
-  /* Поле ввода с плавной анимацией фокуса */
-  .vr-input {
-    @apply w-full px-4 py-3 rounded-lg bg-steel/80 border border-edge text-slate-100
-           placeholder:text-slate-500 outline-none transition-all duration-300;
-  }
-  .vr-input:focus {
-    @apply border-blizzard shadow-glow-blue bg-steel;
-  }
-
-  /* Тонкая прокрутка: тёмно-синий thumb, прозрачный трек.
-         width 6px, контент не перекрывает. Chrome/Edge/WebView2 */
-  .vr-scroll::-webkit-scrollbar,
-  .vr-news-feed::-webkit-scrollbar,
-  .vr-side::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .vr-scroll::-webkit-scrollbar-track,
-  .vr-news-feed::-webkit-scrollbar-track,
-  .vr-side::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .vr-scroll::-webkit-scrollbar-thumb,
-  .vr-news-feed::-webkit-scrollbar-thumb,
-  .vr-side::-webkit-scrollbar-thumb {
-    background: rgba(74, 158, 255, 0.25);
-    border-radius: 3px;
-  }
-
-  .vr-scroll::-webkit-scrollbar-thumb:hover,
-  .vr-news-feed::-webkit-scrollbar-thumb:hover,
-  .vr-side::-webkit-scrollbar-thumb:hover {
-    background: rgba(74, 158, 255, 0.5);
-  }
+.float-bottombar-wrap {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 16px;
 }
 
-/* Разрешаем выделение только там, где это нужно (адрес сервера) */
-.vr-selectable {
-  user-select: text;
+.float-topbar {
+  width: 620px;
+  max-width: 100%;
+  pointer-events: auto;
+}
+
+.float-bottombar {
+  width: 660px;
+  max-width: 100%;
+  pointer-events: auto;
+}
+
+/* Центральный контент: 880px, отступы от рейлов по 80px с каждой стороны */
+.float-center {
+  width: 880px;
+  max-width: calc(100vw - 200px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Боковые рейлы */
+.rail-left {
+  position: absolute;
+  left: 16px;
+  top: 88px;
+  z-index: 30;
+}
+
+.rail-right {
+  position: absolute;
+  right: 16px;
+  top: 88px;
+  z-index: 30;
+}
+
+@media (max-width: 1100px) {
+  .float-center { max-width: calc(100vw - 180px); }
+}
+
+@media (max-width: 900px) {
+  .rail-left { left: 10px; }
+  .rail-right { right: 10px; }
+  .float-center { max-width: calc(100vw - 20px); }
+}
+
+@media (max-width: 640px) {
+  .rail-right { display: none; }
+}
+
+/* === ЦВЕТА === */
+.text-gold { color: var(--gold); }
+.text-blizzard { color: var(--blizzard); }
+.text-emerald { color: var(--emerald); }
+.text-blood { color: var(--blood); }
+
+/* === СКРОЛЛБАР === */
+.vr-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.vr-scroll::-webkit-scrollbar-track { background: transparent; }
+.vr-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.vr-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* === АНИМАЦИИ === */
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 194, 75, 0.55); }
+  50% { box-shadow: 0 0 0 14px rgba(255, 194, 75, 0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-gold { animation: pulseGold 2.4s ease-in-out infinite; }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease-out both; }
+.animate-pulse-dot { animation: pulseDot 1.4s ease-in-out infinite; }
+
+.img-fallback {
+  background: linear-gradient(135deg, #1a2540 0%, #0a0e14 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Плотная стеклянная панель для нижнего статус-бара === */
+.glass-solid {
+  background: linear-gradient(180deg, rgba(26, 33, 47, 0.92) 0%, rgba(15, 20, 30, 0.96) 100%);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Внутренняя подсветка фазой — задаётся через inline style
+   переменной --phase-color. Мягкое свечение по краю панели. */
+.glass-solid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 100%,
+    var(--phase-glow, transparent) 0%,
+    transparent 60%
+  );
+  opacity: 0.55;
+  transition: background 0.4s ease;
+}
+
+/* Тонкая цветная полоска-индикатор снизу панели */
+.phase-strip {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--phase-color, transparent);
+  box-shadow: 0 0 12px var(--phase-color, transparent);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Счётчик прогресса — плотнее */
+.progress-track {
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #0e9cff 0%, #6cc6ff 100%);
+  box-shadow: 0 0 12px rgba(14, 156, 255, 0.7);
+  transition: width 0.3s ease;
 }
