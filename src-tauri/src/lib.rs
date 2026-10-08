@@ -51,6 +51,8 @@ pub fn run() {
             network::unpack_zip,
             network::check_cached_zip,
             network::check_launcher_update,
+            network::register_user,
+            network::login_user,
             network::download_and_install_update,
             // logger.rs
             logger::get_logs_path,

@@ -162,3 +162,24 @@ export function unpackZip(zipPath: string, destDir: string): Promise<number> {
 export function openFolder(path: string): Promise<void> {
   return invoke('open_folder', { path });
 }
+
+// === АУТЕНТИФИКАЦИЯ ===
+
+export interface AuthResponse {
+  token: string;
+  user_id: number;
+  email: string;
+  username: string;
+}
+
+export function registerUser(
+  email: string,
+  password: string,
+  username: string
+): Promise<AuthResponse> {
+  return invoke<AuthResponse>('register_user', { email, password, username });
+}
+
+export function loginUser(email: string, password: string): Promise<AuthResponse> {
+  return invoke<AuthResponse>('login_user', { email, password });
+}

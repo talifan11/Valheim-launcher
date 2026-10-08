@@ -1,42 +1,63 @@
 from pathlib import Path
 ROOT = Path(__file__).parent
-state = """# Valheim Rouge — состояние проекта
+p = ROOT / 'src-tauri' / 'src' / 'network.rs'
+text = p.read_text(encoding='utf-8')
 
-## Что это
-Лаунчер Valheim на Tauri v2 + React 18 + Rust.
-- Игровой сервер: 85.198.70.143:2456
-- Раздача: 62.217.178.72
-- Репо: https://github.com/talifan11/Valheim-launcher
+# Заменяем installed_path и downloads_dir — использовать %APPDATA%/ValheimRouge как в config.rs
+old_installed = '''fn installed_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Не удалось получить папку данных: {e}"))?;
+    Ok(dir.join("installed.json"))
+}'''
 
-## Версии (должны совпадать)
-- package.json: 1.0.0
-- tauri.conf.json: 1.0.0
-- config.ts LAUNCHER_VERSION: 1.0.0
-- launcher-version.json на VPS: 1.0.0
+new_installed = '''fn installed_path(_app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(base_data_dir()?.join("installed.json"))
+}
 
-## Критичные фиксы
-- commands.rs: use std::net::ToSocketAddrs
-- network.rs: use tauri::{AppHandle, Emitter, Manager}
-- network.rs: use zip::ZipArchive; use crate::logger;
-- network.rs: BASE_URL = "http://62.217.178.72"
-- config.rs: default_server_address() = "85.198.70.143:2456"
-- lib.rs: регистрация unpack_zip, resolve_download_path, check_cached_zip, check_launcher_update, open_folder, get_logs_path, read_logs, clear_logs
-- vite.config.ts: watch.ignored = ['**/src-tauri/**']
+/// Общая папка данных: %APPDATA%/ValheimRouge
+/// app_data_dir() даёт %APPDATA%/<identifier>, а нам нужна папка без identifier.
+fn base_data_dir() -> Result<PathBuf, String> {
+    let base = dirs_next::config_dir()
+        .ok_or_else(|| "Не удалось определить %APPDATA%".to_string())?;
+    Ok(base.join("ValheimRouge"))
+}'''
 
-## Пути
-- Проект: Z:\\ValheinRogue\\Launcher
-- Установщик: src-tauri/target/release/bundle/nsis/
-- На VPS: /var/www/valheim/launcher/
+if old_installed in text:
+    text = text.replace(old_installed, new_installed)
+    print("OK: installed_path исправлен")
+else:
+    print("Проверь вручную — не нашёл старый installed_path")
 
-## Теги git
-- v1.0-prealpha-stable
-- v1.1-floating
-- backup-local-main
+# downloads_dir
+old_downloads = '''fn downloads_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Не удалось получить папку данных: {e}"))?;
+    let dir = base.join("downloads");
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Не удалось создать папку загрузок: {e}"))?;
+    Ok(dir)
+}'''
 
-## Что осталось
-- CI/CD (GitHub Actions)
-- Фидбек от корешей
-- Реальный API для друзей/чата
-"""
-(ROOT / 'PROJECT_STATE.md').write_text(state, encoding='utf-8')
-print("OK: PROJECT_STATE.md")
+new_downloads = '''fn downloads_dir(_app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = base_data_dir()?.join("downloads");
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Не удалось создать папку загрузок: {e}"))?;
+    Ok(dir)
+}'''
+
+if old_downloads in text:
+    text = text.replace(old_downloads, new_downloads)
+    print("OK: downloads_dir исправлен")
+else:
+    print("Проверь вручную — не нашёл старый downloads_dir")
+
+p.write_text(text, encoding='utf-8')
+print("")
+print("Дальше:")
+print("  1. cd src-tauri && cargo check && cd ..")
+print("  2. npm run tauri build")
+print("  3. Запусти новый .exe и войди — сразу на главный экран")

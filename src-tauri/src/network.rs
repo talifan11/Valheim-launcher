@@ -76,21 +76,21 @@ pub struct InstalledState {
 static DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 /// Путь к файлу состояния установки внутри appdata.
-fn installed_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Не удалось получить папку данных: {e}"))?;
-    Ok(dir.join("installed.json"))
+fn installed_path(_app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(base_data_dir()?.join("installed.json"))
+}
+
+/// Общая папка данных: %APPDATA%/ValheimRouge
+/// app_data_dir() даёт %APPDATA%/<identifier>, а нам нужна папка без identifier.
+fn base_data_dir() -> Result<PathBuf, String> {
+    let base = dirs_next::config_dir()
+        .ok_or_else(|| "Не удалось определить %APPDATA%".to_string())?;
+    Ok(base.join("ValheimRouge"))
 }
 
 /// Путь к папке загрузок: %APPDATA%/ValheimRouge/downloads/
-fn downloads_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let base = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Не удалось получить папку данных: {e}"))?;
-    let dir = base.join("downloads");
+fn downloads_dir(_app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = base_data_dir()?.join("downloads");
     fs::create_dir_all(&dir)
         .map_err(|e| format!("Не удалось создать папку загрузок: {e}"))?;
     Ok(dir)
@@ -663,4 +663,66 @@ pub fn download_and_install_update(_app: AppHandle, url: String) -> Result<(), S
     std::thread::sleep(std::time::Duration::from_millis(800));
     logger::log_info("Updater", "Закрываем приложение для установки.");
     std::process::exit(0);
+}
+
+// === АУТЕНТИФИКАЦИЯ ===
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: i64,
+    pub email: String,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct ApiError {
+    detail: String,
+}
+
+fn post_auth(url: &str, body: serde_json::Value) -> Result<AuthResponse, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("HTTP-клиент: {e}"))?;
+
+    let response = client
+        .post(url)
+        .json(&body)
+        .send()
+        .map_err(|e| format!("Сетевая ошибка: {e}"))?;
+
+    let status = response.status();
+    let text = response.text().map_err(|e| format!("Чтение ответа: {e}"))?;
+
+    if !status.is_success() {
+        if let Ok(err) = serde_json::from_str::<ApiError>(&text) {
+            return Err(err.detail);
+        }
+        return Err(format!("HTTP {}", status.as_u16()));
+    }
+
+    serde_json::from_str::<AuthResponse>(&text)
+        .map_err(|e| format!("Некорректный ответ сервера: {e}"))
+}
+
+#[tauri::command]
+pub fn register_user(email: String, password: String, username: String) -> Result<AuthResponse, String> {
+    let url = format!("{}/api/register", BASE_URL);
+    let body = serde_json::json!({
+        "email": email,
+        "password": password,
+        "username": username,
+    });
+    post_auth(&url, body)
+}
+
+#[tauri::command]
+pub fn login_user(email: String, password: String) -> Result<AuthResponse, String> {
+    let url = format!("{}/api/login", BASE_URL);
+    let body = serde_json::json!({
+        "email": email,
+        "password": password,
+    });
+    post_auth(&url, body)
 }

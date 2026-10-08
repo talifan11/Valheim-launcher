@@ -1,7 +1,7 @@
 {
   "name": "valheim-rouge",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Valheim Rouge — стильный десктопный лаунчер для Valheim на Tauri v2",
   "type": "module",
   "scripts": {

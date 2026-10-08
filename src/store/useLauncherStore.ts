@@ -23,6 +23,14 @@ interface LauncherState {
   setSettingsOpen: (open: boolean) => void;
   /** Логин-заглушка: непустые поля -> главный экран + сохранение username */
   login: (username: string) => Promise<void>;
+  /** Реальная авторизация через API */
+  loginWithApi: (email: string, password: string) => Promise<void>;
+  /** Регистрация через API */
+  registerWithApi: (email: string, password: string, username: string) => Promise<void>;
+  /** Текущий JWT-токен (если авторизован через API) */
+  authToken: string | null;
+  /** Email авторизованного пользователя */
+  userEmail: string | null;
   /** Выход: возврат к экрану входа */
   logout: () => void;
   /** Изменить кусок конфига и сразу сохранить на диск */
@@ -36,6 +44,8 @@ interface LauncherState {
 export const useLauncherStore = create<LauncherState>((set, get) => ({
   config: DEFAULT_CONFIG,
   isAuthenticated: false,
+  authToken: null,
+  userEmail: null,
   isLaunching: false,
   errorMessage: null,
   settingsOpen: false,
@@ -98,4 +108,26 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   },
 
   dismissError: () => set({ errorMessage: null }),
+  loginWithApi: async (email: string, password: string) => {
+    const result = await api.loginUser(email, password);
+    set({
+      isAuthenticated: true,
+      authToken: result.token,
+      userEmail: result.email,
+      config: { ...get().config, username: result.username },
+    });
+    await get().updateConfig({ username: result.username });
+  },
+
+  registerWithApi: async (email: string, password: string, username: string) => {
+    const result = await api.registerUser(email, password, username);
+    set({
+      isAuthenticated: true,
+      authToken: result.token,
+      userEmail: result.email,
+      config: { ...get().config, username: result.username },
+    });
+    await get().updateConfig({ username: result.username });
+  },
+
 }));
