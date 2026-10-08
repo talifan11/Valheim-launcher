@@ -52,19 +52,11 @@ impl Default for Config {
 /// «ValheimRouge». На Linux/macOS получается ~/.config/ValheimRouge.
 #[allow(dead_code)]
 fn config_dir(_app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    use tauri::Manager;
-    // path().config_dir() возвращает Result — корректно прокидываем ошибку вверх
-    let base = _app
-        .path()
-        .config_dir()
-        .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
-    // На Windows config_dir() == %APPDATA%\<identifier>; поднимаемся на уровень
-    // %APPDATA% и собираем нужный нам каталог ValheimRouge.
-    let roaming = base
-        .parent()
-        .map(|p| p.to_path_buf())
-        .unwrap_or(base);
-    Ok(roaming.join("ValheimRouge"))
+    // Используем dirs_next::config_dir() = %APPDATA% на Windows,
+    // чтобы путь совпадал с logger и network (%APPDATA%\ValheimRouge).
+    let base = dirs_next::config_dir()
+        .ok_or_else(|| "Не удалось определить %APPDATA%".to_string())?;
+    Ok(base.join("ValheimRouge"))
 }
 
 /// Полный путь к config.json

@@ -3,7 +3,7 @@
 export const APP_NAME = 'Valheim Rouge';
 
 /** Версия лаунчера. Должна совпадать с package.json и tauri.conf.json. */
-export const LAUNCHER_VERSION = '1.0.1';
+export const LAUNCHER_VERSION = '1.0.2';
 
 /** Если true — проверка обновлений игры пропускается (для разработки). */
 export const DEV_SKIP_UPDATE = false;

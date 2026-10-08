@@ -94,7 +94,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  runCheck: async (force = false) => {
+  runCheck: async (_force = false) => {
     if (get().busy || get().phase === 'downloading' || get().phase === 'unpacking') return;
     set({ busy: true, phase: 'checking', error: null });
 
@@ -108,7 +108,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       const installedVersion = await api.getInstalledVersion();
 
       // Если версии совпадают — сразу ready, ничего не проверяем и не качаем.
-      if (manifest.version === installedVersion && !force) {
+      if (manifest.version === installedVersion) {
         set({
           phase: 'ready',
           manifest,
