@@ -24,12 +24,12 @@ export function FriendProfile({ friendId, onClose }: Props) {
   };
 
   const handleChat = () => {
-    openDmWith(friend.id, friend.name);
+    openDmWith(String(friend.userId), friend.name);
     onClose();
   };
 
   const handleRemove = () => {
-    removeFriend(friend.id);
+    removeFriend(friend.userId);
     toast.info(`${friend.name} удалён из друзей`);
     onClose();
   };

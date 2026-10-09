@@ -25,34 +25,8 @@ interface NotificationsState {
   reset: () => void;
 }
 
-const now = Date.now();
 
-const MOCK: AppNotification[] = [
-  {
-    id: 'n1',
-    kind: 'info',
-    title: 'Эрик зашёл в игру',
-    message: 'На сервере Valheim Rouge',
-    timestamp: now - 1000 * 60 * 3,
-    read: false,
-  },
-  {
-    id: 'n2',
-    kind: 'success',
-    title: 'Обновление 1.0.2 доступно',
-    message: 'Новые моды и исправления',
-    timestamp: now - 1000 * 60 * 60 * 2,
-    read: false,
-  },
-  {
-    id: 'n3',
-    kind: 'info',
-    title: 'Новое сообщение в чате',
-    message: 'Общий канал',
-    timestamp: now - 1000 * 60 * 60 * 5,
-    read: true,
-  },
-];
+const MOCK: AppNotification[] = [];
 
 export const useNotificationsStore = create<NotificationsState>()(
   persist(

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Hash, MessageCircle, Trash2, Eraser } from 'lucide-react';
+import { Send, Hash, MessageCircle, Trash2, Eraser, X } from 'lucide-react';
 import { useChatStore, type ChatChannel } from '../../store/useChatStore';
 
 interface ChannelContextMenu {
@@ -101,9 +101,17 @@ export function ChatPanel() {
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
               <MessageCircle size={16} className="text-blizzard" />
               <span className="text-sm font-semibold text-white">Чат</span>
-              <span className="ml-auto text-[10px] text-slate-600 font-mono">
+              <span className="ml-auto text-[10px] text-slate-600 font-mono hidden sm:inline">
                 ПКМ по каналу — действия
               </span>
+              <button
+                type="button"
+                onClick={() => useChatStore.getState().toggle(false)}
+                className="ml-2 w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+                title="Закрыть чат"
+              >
+                <X size={14} />
+              </button>
             </div>
 
             {/* Список каналов */}

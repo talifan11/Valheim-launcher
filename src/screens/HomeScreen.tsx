@@ -100,9 +100,9 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
     if (action === 'play') {
       toast.success(`Приглашение отправлено ${friend.name}`);
     } else if (action === 'chat') {
-      openDmWith(friend.id, friend.name);
+      openDmWith(String(friend.userId), friend.name);
     } else if (action === 'remove') {
-      removeFriend(friend.id);
+      removeFriend(friend.userId);
       toast.info(`${friend.name} удалён из друзей`);
     }
     setContextMenu(null);

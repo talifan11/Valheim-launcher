@@ -42,39 +42,8 @@ const GENERAL_CHANNEL: ChatChannel = {
   title: 'Общий чат',
 };
 
-const now = Date.now();
-
 const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
-  general: [
-    {
-      id: 'm1',
-      authorId: 'p1',
-      authorName: 'Эрик',
-      text: 'Кто идёт на Ётуна сегодня в 20:00?',
-      timestamp: now - 1000 * 60 * 45,
-    },
-    {
-      id: 'm2',
-      authorId: 'p3',
-      authorName: 'Олаф',
-      text: 'Я в деле, только соберу снаряжение',
-      timestamp: now - 1000 * 60 * 42,
-    },
-    {
-      id: 'm3',
-      authorId: 'p2',
-      authorName: 'Бьорн',
-      text: 'Возьму лук и стрелы, буду сзади',
-      timestamp: now - 1000 * 60 * 30,
-    },
-    {
-      id: 'm4',
-      authorId: 'p7',
-      authorName: 'Астрид',
-      text: 'Народ, кто-нибудь видел новый алтарь на севере?',
-      timestamp: now - 1000 * 60 * 15,
-    },
-  ],
+  general: [],
 };
 
 export const useChatStore = create<ChatState>()(
@@ -84,7 +53,7 @@ export const useChatStore = create<ChatState>()(
       channels: [GENERAL_CHANNEL],
       activeChannelId: 'general',
       messages: INITIAL_MESSAGES,
-      unread: { general: 1 },
+      unread: {},
 
       toggle: (open) => set({ open: open ?? !get().open }),
 
@@ -180,7 +149,7 @@ export const useChatStore = create<ChatState>()(
           channels: [GENERAL_CHANNEL],
           activeChannelId: 'general',
           messages: INITIAL_MESSAGES,
-          unread: { general: 1 },
+          unread: {},
         }),
     }),
     {

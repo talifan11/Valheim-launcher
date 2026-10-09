@@ -201,3 +201,162 @@ export async function listenCheckProgress(
   });
   return unlisten;
 }
+
+// ============================================================
+// ДРУЗЬЯ И СООБЩЕНИЯ (через HTTP API на VPS)
+// ============================================================
+
+export interface UserSearchResult {
+  user_id: number;
+  username: string;
+  online?: boolean;
+}
+
+export interface FriendsListResponse {
+  friends: UserSearchResult[];
+  incoming: UserSearchResult[];
+  outgoing: UserSearchResult[];
+}
+
+export interface RemoteMessage {
+  id: number;
+  from_user_id: number;
+  to_user_id: number;
+  text: string;
+  created_at: string;
+  from_username: string;
+  own: boolean;
+}
+
+const API_BASE = 'http://62.217.178.72/api';
+
+/** Поиск игроков по имени */
+export async function searchUsers(query: string, token: string): Promise<UserSearchResult[]> {
+  const url = `${API_BASE}/users/search?q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка поиска: ${res.status}`);
+  return res.json();
+}
+
+/** Список друзей + входящие + исходящие заявки */
+export async function getFriends(token: string): Promise<FriendsListResponse> {
+  const res = await fetch(`${API_BASE}/friends`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка друзей: ${res.status}`);
+  return res.json();
+}
+
+/** Отправить заявку в друзья */
+export async function sendFriendRequest(toUserId: number, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/friends/request`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ to_user_id: toUserId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+}
+
+/** Принять заявку */
+export async function acceptFriendRequest(fromUserId: number, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/friends/accept`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from_user_id: fromUserId }),
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+}
+
+/** Отклонить заявку */
+export async function rejectFriendRequest(fromUserId: number, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/friends/reject`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from_user_id: fromUserId }),
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+}
+
+/** Удалить друга */
+export async function removeFriend(otherUserId: number, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/friends/remove`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from_user_id: otherUserId }),
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+}
+
+/** Получить переписку с игроком */
+export async function getMessages(otherUserId: number, token: string): Promise<RemoteMessage[]> {
+  const res = await fetch(`${API_BASE}/messages/${otherUserId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка сообщений: ${res.status}`);
+  return res.json();
+}
+
+/** Отправить сообщение */
+export async function sendMessage(toUserId: number, text: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ to_user_id: toUserId, text }),
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+}
+
+/** Количество непрочитанных */
+export async function getUnreadCount(token: string): Promise<number> {
+  const res = await fetch(`${API_BASE}/messages/unread/count`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return 0;
+  const data = await res.json();
+  return data.count ?? 0;
+}
+
+/** Отправить heartbeat — сообщить серверу что мы онлайн */
+export async function sendHeartbeat(token: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/heartbeat`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.warn('Heartbeat не отправлен:', err);
+  }
+}
+
+/** Получить список ID игроков, которые сейчас онлайн */
+export async function getOnlineUserIds(token: string): Promise<number[]> {
+  try {
+    const res = await fetch(`${API_BASE}/users/online`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}

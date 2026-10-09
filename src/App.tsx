@@ -7,8 +7,10 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { VRButton, VRModal } from './components/ui';
 import { useLauncherStore } from './store/useLauncherStore';
+import { sendHeartbeat } from './lib/api';
 import { useUpdateStore } from './store/useUpdateStore';
 import { useAppSettingsStore } from './store/useAppSettingsStore';
+import { useFriendsStore } from './store/useFriendsStore';
 import { DEV_SKIP_UPDATE } from './config';
 import type { ConnectionState } from './components/layout/FloatingTopBar';
 
@@ -23,6 +25,26 @@ export default function App() {
   const runCheck = useUpdateStore((s) => s.runCheck);
 
   const [connection, setConnection] = useState<ConnectionState>('checking');
+  const startFriendsPolling = useFriendsStore((s) => s.startPolling);
+  const authToken = useLauncherStore((s) => s.authToken);
+
+  // Heartbeat: раз в 30 секунд сообщаем серверу что мы онлайн
+  useEffect(() => {
+    if (!isAuthenticated || !authToken) return;
+    void sendHeartbeat(authToken);
+    const interval = window.setInterval(() => {
+      void sendHeartbeat(authToken);
+    }, 30000);
+    return () => window.clearInterval(interval);
+  }, [isAuthenticated, authToken]);
+
+  // Загрузка друзей при входе в аккаунт + поллинг каждые 30 секунд
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const stop = startFriendsPolling();
+    return stop;
+  }, [isAuthenticated, startFriendsPolling]);
+
 
   // Применяем тему через data-theme на <html>
   const theme = useAppSettingsStore((s) => s.theme);
@@ -65,6 +87,10 @@ export default function App() {
         )}
       </div>
 
+      <div
+        className="absolute top-0 left-0 right-0 h-8 z-[90]"
+        data-tauri-drag-region
+      />
       <WindowControls />
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

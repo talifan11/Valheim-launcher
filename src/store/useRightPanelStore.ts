@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 
-export type RightPanelSection = 'friends' | 'server';
+export type RightPanelSection = 'friends' | 'server' | 'search';
 
 interface RightPanelState {
   open: boolean;
