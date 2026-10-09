@@ -94,9 +94,15 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       // 1. Проверяем, что valheim.exe реально лежит по пути из настроек
       const exists = await api.checkGamePath(config.game_path);
       if (!exists) {
-        throw new Error(
-          'valheim.exe не найден по указанному пути. Откройте настройки и выберите папку с игрой.'
-        );
+        // Файлов нет — запускаем полную проверку и переключаемся на InstallScreen
+        set({
+          isLaunching: false,
+          errorMessage: 'Файлы игры повреждены или удалены. Запускаю проверку...',
+        });
+        const { useUpdateStore } = await import('./useUpdateStore');
+        const runCheck = useUpdateStore.getState().runCheck;
+        await runCheck(true);
+        return;
       }
       // 2. Запускаем процесс; Rust-сторона сворачивает окно лаунчера
       await api.launchGame(config.game_path);

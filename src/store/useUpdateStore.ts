@@ -111,7 +111,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       const installedVersion = await api.getInstalledVersion();
 
       // Если версия совпадает — сразу ready, файлы не проверяем.
-      if (manifest.version === installedVersion) {
+      if (manifest.version === installedVersion && !_force) {
         set({
           phase: 'ready',
           manifest,
