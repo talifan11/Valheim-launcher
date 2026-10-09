@@ -12,7 +12,7 @@ use std::time::Instant;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use zip::ZipArchive;
 use crate::logger;
 
@@ -98,7 +98,15 @@ fn downloads_dir(_app: &AppHandle) -> Result<PathBuf, String> {
 
 /// Скачивает и парсит manifest.json с сервера.
 #[tauri::command]
-pub fn fetch_manifest(url: String) -> Result<Manifest, String> {
+pub async fn fetch_manifest(url: String) -> Result<Manifest, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fetch_manifest_blocking(url)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn fetch_manifest_blocking(url: String) -> Result<Manifest, String> {
     let response = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -130,7 +138,57 @@ fn parse_manifest_text(text: &str) -> Result<Manifest, String> {
 
 /// Проверяет наличие, размер и SHA-256 каждого файла из манифеста.
 #[tauri::command]
-pub fn check_files(manifest: Manifest, install_dir: String) -> Result<Vec<FileStatus>, String> {
+pub async fn check_files(
+    app: AppHandle,
+    manifest: Manifest,
+    install_dir: String,
+) -> Result<Vec<FileStatus>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        check_files_blocking_with_progress(&app, manifest, install_dir)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn check_files_blocking_with_progress(
+    app: &AppHandle,
+    manifest: Manifest,
+    install_dir: String,
+) -> Result<Vec<FileStatus>, String> {
+    if install_dir.trim().is_empty() {
+        return Err("Папка установки не задана".to_string());
+    }
+    let root = Path::new(&install_dir);
+    let total = manifest.files.len();
+    let mut statuses = Vec::with_capacity(total);
+
+    for (i, file) in manifest.files.iter().enumerate() {
+        statuses.push(FileStatus {
+            path: file.path.clone(),
+            status: local_file_status(root, file),
+            size: file.size,
+        });
+
+        // Эмитим прогресс каждые 10 файлов.
+        if i % 10 == 0 || i == total - 1 {
+            let _ = app.emit(
+                "check-progress",
+                serde_json::json!({
+                    "checked": i + 1,
+                    "total": total,
+                    "current": file.path,
+                }),
+            );
+        }
+    }
+
+    Ok(statuses)
+}
+
+fn check_files_blocking(
+    manifest: Manifest,
+    install_dir: String,
+) -> Result<Vec<FileStatus>, String> {
     if install_dir.trim().is_empty() {
         return Err("Папка установки не задана".to_string());
     }

@@ -183,3 +183,21 @@ export function registerUser(
 export function loginUser(email: string, password: string): Promise<AuthResponse> {
   return invoke<AuthResponse>('login_user', { email, password });
 }
+
+export interface CheckProgressPayload {
+  checked: number;
+  total: number;
+  current: string;
+}
+
+/** Подписаться на событие check-progress из Rust (проверка файлов) */
+export async function listenCheckProgress(
+  handler: (payload: CheckProgressPayload) => void
+): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  const { listen } = await import('@tauri-apps/api/event');
+  const unlisten = await listen<CheckProgressPayload>('check-progress', (event) => {
+    handler(event.payload);
+  });
+  return unlisten;
+}

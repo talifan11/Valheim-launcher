@@ -1,6 +1,3 @@
-// Состояние установки файлов игры: проверка манифеста, скачивание, распаковка.
-// ZIP кешируется в downloads/ — не перекачивается при повторных запусках.
-
 import { create } from 'zustand';
 import * as api from '../lib/api';
 import type { DownloadProgressPayload, FileStatus, Manifest } from '../lib/api';
@@ -34,12 +31,15 @@ interface UpdateState {
   log: LogLine[];
   error: string | null;
   busy: boolean;
-
-  runCheck: (force?: boolean) => Promise<void>;
+  runCheck: (_force?: boolean) => Promise<void>;
   startInstall: () => Promise<void>;
   cancelInstall: () => Promise<void>;
   handleProgress: (payload: DownloadProgressPayload) => void;
   clearError: () => void;
+  /** Прогресс проверки: проверено / всего */
+  checkProgress: { checked: number; total: number; current: string } | null;
+  /** Установить прогресс проверки */
+  setCheckProgress: (p: { checked: number; total: number; current: string } | null) => void;
 }
 
 let progressUnlisten: (() => void) | null = null;
@@ -91,11 +91,14 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
   log: [],
   error: null,
   busy: false,
+  checkProgress: null,
 
   clearError: () => set({ error: null }),
 
+  setCheckProgress: (p) => set({ checkProgress: p }),
+
   runCheck: async (_force = false) => {
-    if (get().busy || get().phase === 'downloading' || get().phase === 'unpacking') return;
+    if (get().busy || get().phase === 'downloading') return;
     set({ busy: true, phase: 'checking', error: null });
 
     try {
@@ -107,7 +110,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       const manifest = await api.fetchManifest(`${api.UPDATE_BASE_URL}/manifest.json`);
       const installedVersion = await api.getInstalledVersion();
 
-      // Если версии совпадают — сразу ready, ничего не проверяем и не качаем.
+      // Если версия совпадает — сразу ready, файлы не проверяем.
       if (manifest.version === installedVersion) {
         set({
           phase: 'ready',
@@ -134,7 +137,18 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         return;
       }
 
-      const statuses = await api.checkFiles(manifest, installDir);
+      // Подписка на прогресс проверки файлов.
+      const unlistenCheck = await api.listenCheckProgress((p) => {
+        get().setCheckProgress(p);
+      });
+
+      let statuses;
+      try {
+        statuses = await api.checkFiles(manifest, installDir);
+      } finally {
+        unlistenCheck();
+        set({ checkProgress: null });
+      }
       const pending = statuses.filter((s) => s.status !== 'OK');
       let nextLog = get().log;
       for (const item of statuses) {
@@ -174,7 +188,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
 
   startInstall: async () => {
     const { manifest, statuses, phase, busy } = get();
-    if (!manifest || busy || phase === 'downloading' || phase === 'unpacking') return;
+    if (!manifest || busy || phase === 'downloading') return;
 
     const config = await api.getConfig();
     const installDir = config.game_path.trim();
@@ -183,6 +197,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       return;
     }
 
+    // Качаем MISSING/OUTDATED/ERROR; OK пропускаем.
     const needDownload = manifest.files.filter((file) => {
       const status = statuses.find((s) => s.path === file.path)?.status ?? 'MISSING';
       return status !== 'OK';
@@ -195,47 +210,19 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       return;
     }
 
-    // Проверяем кеш: что уже лежит в downloads/ и совпадает по хешу.
-    const filesToDownload: typeof needDownload = [];
-    const cachedFiles: typeof needDownload = [];
-    for (const file of needDownload) {
-      try {
-        const cached = await api.checkCachedZip(file.path, file.sha256);
-        if (cached) {
-          cachedFiles.push(file);
-        } else {
-          filesToDownload.push(file);
-        }
-      } catch {
-        filesToDownload.push(file);
-      }
-    }
-
+    const totalBytes = needDownload.reduce((sum, f) => sum + f.size, 0);
     set({
       phase: 'downloading',
       busy: true,
       error: null,
       filePercents: {},
       overallPercent: 0,
-      currentFile: filesToDownload[0]?.path ?? 'Распаковка из кеша...',
+      currentFile: needDownload[0].path,
       speedMbps: 0,
       etaSeconds: null,
-      log: pushLine(
-        get().log,
-        cachedFiles.length > 0
-          ? `В кеше: ${cachedFiles.length}, скачать: ${filesToDownload.length}`
-          : `Начало загрузки: ${needDownload.length} файлов`
-      ),
+      log: pushLine(get().log, `Начало загрузки: ${needDownload.length} файлов`),
     });
-
-    const totalBytes = filesToDownload.reduce((sum, f) => sum + f.size, 0);
     queueTotalBytes = totalBytes;
-
-    // Если всё уже в кеше — сразу распаковываем.
-    if (filesToDownload.length === 0) {
-      await runUnpack(set, get, needDownload, installDir, manifest.version);
-      return;
-    }
 
     if (!progressUnlisten) {
       progressUnlisten = await api.listenDownloadProgress((payload) =>
@@ -243,34 +230,28 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       );
     }
 
-    const items: Array<[string, string, string]> = [];
-    const cachePaths: Record<string, string> = {};
-    try {
-      for (const file of filesToDownload) {
-        const cachePath = await api.resolveDownloadPath(file.path);
-        cachePaths[file.path] = cachePath;
-        items.push([file.url, cachePath, file.sha256]);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      set({
-        phase: 'error',
-        busy: false,
-        error: message,
-        log: pushLine(get().log, `ERROR: ${message}`),
-      });
-      toast.error('Не удалось подготовить пути загрузки');
-      if (progressUnlisten) {
-        progressUnlisten();
-        progressUnlisten = null;
-      }
-      return;
-    }
+    // Качаем файлы напрямую в game_path. URL из манифеста, dest = game_path/path.
+    const items: Array<[string, string, string]> = needDownload.map((file) => {
+      const sep = installDir.includes('\\') ? '\\' : '/';
+      const cleanPath = file.path.replace(/\//g, sep);
+      return [file.url, `${installDir}${sep}${cleanPath}`, file.sha256];
+    });
 
     try {
       const result = await api.downloadBatch(items);
       const done = result.ok >= result.total;
-      if (!done) {
+      if (done) {
+        await api.setInstalledVersion(manifest.version);
+        set({
+          phase: 'ready',
+          installedVersion: manifest.version,
+          overallPercent: 100,
+          busy: false,
+          currentFile: '',
+          log: pushLine(get().log, `Установка завершена: версия ${manifest.version}`),
+        });
+        toast.success(`Версия ${manifest.version} установлена`);
+      } else {
         set({
           phase: 'needs-update',
           busy: false,
@@ -278,10 +259,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
           log: pushLine(get().log, `FAIL: ${result.failed.join(', ')}`),
         });
         toast.error('Часть файлов не удалось скачать. Попробуйте снова.');
-        return;
       }
-
-      await runUnpack(set, get, needDownload, installDir, manifest.version);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       set({
@@ -354,61 +332,3 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     });
   },
 }));
-
-// Распаковка всех архивов + запись версии.
-async function runUnpack(
-  set: (partial: Partial<UpdateState> | ((s: UpdateState) => Partial<UpdateState>)) => void,
-  get: () => UpdateState,
-  files: Array<{ path: string; url: string; sha256: string; size: number }>,
-  installDir: string,
-  version: string
-): Promise<void> {
-  set({
-    phase: 'unpacking',
-    currentFile: 'Распаковка...',
-    log: pushLine(get().log, 'Распаковка архивов...'),
-  });
-
-  let totalFiles = 0;
-  try {
-    for (const file of files) {
-      const cachePath = await api.resolveDownloadPath(file.path);
-      try {
-        const count = await api.unpackZip(cachePath, installDir);
-        totalFiles += count;
-        set({
-          log: pushLine(get().log, `OK: распакован ${file.path} (${count} файлов)`),
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        set({
-          phase: 'error',
-          busy: false,
-          error: `Ошибка распаковки ${file.path}: ${message}`,
-          log: pushLine(get().log, `ERROR: распаковка ${file.path}: ${message}`),
-        });
-        toast.error(`Не удалось распаковать ${file.path}`);
-        return;
-      }
-    }
-
-    await api.setInstalledVersion(version);
-    set({
-      phase: 'ready',
-      installedVersion: version,
-      overallPercent: 100,
-      busy: false,
-      currentFile: '',
-      log: pushLine(get().log, `Установка завершена: ${totalFiles} файлов, версия ${version}`),
-    });
-    toast.success(`Версия ${version} установлена`);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    set({
-      phase: 'error',
-      busy: false,
-      error: message,
-      log: pushLine(get().log, `ERROR: ${message}`),
-    });
-  }
-}
