@@ -49,7 +49,7 @@ function NewsCard({ item, onClick }: { item: NewsItem; onClick: () => void }) {
         <h3 className="font-display text-base font-semibold leading-snug text-white line-clamp-2 group-hover:text-gold transition-colors">
           {item.title}
         </h3>
-        <p className="mt-1.5 text-xs leading-relaxed text-slate-400 line-clamp-2">
+        <p className="mt-1.5 text-xs leading-relaxed text-slate-400 line-clamp-2 whitespace-pre-wrap break-words">
           {item.description}
         </p>
       </div>

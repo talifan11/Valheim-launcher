@@ -58,9 +58,20 @@ export default function App() {
     void loadConfig();
   }, [loadConfig]);
 
-  // Загрузка новостей при старте (если кэш старше 5 минут)
+  // Загрузка новостей при старте + при возврате фокуса в окно
   useEffect(() => {
     void loadNews();
+
+    const onFocus = () => {
+      void loadNews(true); // force = true, игнорируем кэш
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onFocus();
+    });
+    return () => {
+      window.removeEventListener('focus', onFocus);
+    };
   }, [loadNews]);
 
   useEffect(() => {

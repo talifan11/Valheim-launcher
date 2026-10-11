@@ -87,7 +87,7 @@ export function NewsDetailModal({ item, onClose }: Props) {
               {item.title}
             </h2>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
               {item.description}
             </p>
 

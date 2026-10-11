@@ -1,0 +1,432 @@
+cd /z/ValheinRogue/Launcher
+
+cat > PROJECT_STATE.md <<'MDEOF'
+# Valheim Rouge — Project State
+
+> Handoff-документ. Покажи этот файл новому чату для восстановления контекста.
+
+## Общая картина
+
+**Valheim Rouge** — игровой проект:
+- **Лаунчер** (Tauri + React) — игроки логинятся, обновляют клиент, играют, общаются
+- **Админка** (React web) — панель управления
+- **DevOps Panel** — управление бэкендом/сборками из браузера
+- **Local Bridge** (Python на ПК) — выполняет команды с VPS
+- **API** (FastAPI на VPS) — обслуживает всё
+- **Игровой сервер** (Valheim + BepInEx) — на ПК владельца
+- **Сайт-креативы** — отдельный репо
+
+## Ссылки
+
+| Что | Где |
+|---|---|
+| Лаунчер | https://github.com/talifan11/Valheim-launcher |
+| Админка | https://github.com/talifan11/Valheim-admin |
+| Сайт | https://github.com/talifan11/Valheim |
+| Сайт живой | https://valheim-rouge.vercel.app |
+| Админка живая | https://panel.62.217.178.72.sslip.io |
+| API | http://62.217.178.72/api |
+| Игровой сервер | 85.198.70.143:2456 |
+| VPS | ssh root@62.217.178.72 (Beget, Ubuntu, 8.6 GB) |
+
+## Архитектура
+┌────────────────────┐
+│ Игроки (Launcher) │
+└──────────┬─────────┘
+│
+▼
+┌────────────────────────────────┐ ┌──────────────────┐
+│ VPS 62.217.178.72 │ │ ПК разработчика │
+│ │ │ │
+│ Nginx │ │ devops_bridge.py │
+│ ├─ /api/* → FastAPI:8000 │◄───────┤ polling 3s │
+│ ├─ /client/ → client files │ │ (npm, scp, git) │
+│ ├─ /videos/, /news/, /avatars/ │ │ │
+│ └─ panel.* → /admin (React) │ │ База: Z:\ValheinRouge
+│ │ │ │
+│ FastAPI (~3100 строк) │ └──────────────────┘
+│ SQLite users.db │
+└────────────────────────────────┘
+│
+▼
+┌────────────────────┐
+│ Игровой сервер │
+│ 85.198.70.143:2456 │
+└────────────────────┘
+
+text
+
+## Технологии
+
+**Лаунчер:** Tauri v2, Rust, React 18, TS, Vite, Tailwind, Zustand, Framer Motion, Lucide
+**Админка:** React 18, TS, Vite, Tailwind, Zustand, Lucide, **Recharts** (графики)
+**Backend:** FastAPI, SQLite, uvicorn, bcrypt, JWT, Pillow, python-multipart
+**Bridge:** Python 3, threading, subprocess
+**Инфра:** Nginx, Let's Encrypt, sslip.io
+
+## Структура лаунчера
+
+`/z/ValheinRogue/Launcher`
+src/
+App.tsx роутинг + loadNews
+config.ts LAUNCHER_VERSION
+screens/ HomeScreen, ProfileScreen, ForumScreen, EventsScreen, ModsScreen
+components/ LoginScreen, layout/, hero/, news/, forum/, profile/, friends/, chat/
+store/ useLauncherStore, useProfileStore, useFriendsStore, useChatStore,
+useForumStore, useNewsStore, useProfileViewStore
+lib/ api.ts, time.ts, rank.ts, newsImage.ts
+
+text
+
+## Структура админки
+
+`/z/ValheinRogue/admin`
+src/
+App.tsx роутинг (login → screens)
+screens/
+Login, Dashboard, Users, Launcher, News, Forum, Chat, DevBoard,
+Mods, Devops
+components/
+layout/ Sidebar, TopBar
+ui/ StatCard, StatusPill, Card, ActionMenu, Breadcrumbs
+dev/ TaskModal
+devops/ SystemWidget, BridgeWidget, PatchesTab, CommandsTab,
+SqlTab, LogsTab
+mods/ ConfigEditor
+news/ NewsEditorModal
+users/ BanModal
+forum/ RankBadge
+store/useAuthStore.ts
+lib/api.ts
+
+text
+
+## База данных (SQLite)
+
+`/opt/valheim-api/users.db`
+
+- **users**: id, email, password_hash, username, created_at, last_seen, avatar_url, is_admin, reputation, banned, ban_reason, banned_at
+- **friendships**: id, user_id, friend_id, status, created_at
+- **messages**: id, from_user_id, to_user_id, text, created_at, read
+- **general_messages**: id, from_user_id, text, created_at
+- **forum_categories**: id, slug, title, description, sort_order
+- **forum_threads**: id, category_id, author_id, title, body, created_at, updated_at, pinned, locked, views, tags
+- **forum_posts**: id, thread_id, author_id, body, created_at
+- **news**: id, title, body, image_url, tag, author_id, created_at, updated_at, published, pinned
+- **dev_tasks**: id, title, description, status, priority, tags, order_index, created_by, created_at, updated_at
+- **devops_patches**: id, name, patch_code, backup_path, success, output, created_by, created_at, duration_ms
+- **devops_commands**: id, command_key, args, status, output, exit_code, created_by, created_at, started_at, finished_at, duration_ms
+- **devops_bridge**: id, token, hostname, platform, version, last_ping, created_at
+
+## API Endpoints
+
+**Auth:** POST /register, /login, GET /me, POST /heartbeat
+**Friends:** GET /users/search, /users/online, /friends; POST /friends/{request|accept|reject|remove}
+**Messages:** GET /messages/{id}, POST /messages, GET /messages/unread/count
+**General chat:** GET/POST /general/messages
+**Forum:** GET /forum/{categories|threads|stats|authors/top}, POST /forum/threads
+**News:** GET /news
+**Profile:** POST/DELETE /profile/avatar
+
+**Admin:** GET /admin/{ping|stats|stats/history|users|news|launcher/current}
+**Admin:** POST /admin/users/{id}/{admin|ban|unban}, /admin/news, /admin/news/{id}/image, /admin/launcher/upload
+**Admin:** PATCH /admin/news/{id}
+**Admin:** DELETE /admin/{news|launcher/files|forum/threads|forum/posts}
+**Admin:** POST /admin/forum/threads/{id}/{pin|lock}
+**Admin:** GET /admin/forum/threads, /admin/chat/{general|users|dm/{a}/{b}}
+**Admin:** DELETE /admin/chat/{general|dm}/{id}
+
+**DevOps:** GET /devops/system, /devops/logs/tail, /devops/bridge/status
+**DevOps:** POST /devops/bridge/register, /devops/bridge/ping, /devops/patch/apply, /devops/patch/rollback/{id}, /devops/sql/query
+**DevOps:** GET /devops/patch/history, /devops/commands/{list|available|pending}
+**DevOps:** POST /devops/commands/create, DELETE /devops/commands/{id}
+**DevOps:** GET /devops/bridge/setup-token
+
+## Файлы на VPS
+/var/www/valheim/
+client/ ~4.3 GB
+launcher/ ~37 MB
+videos/ ~13 MB
+news/ ~11 MB
+avatars/ ~268 KB
+admin/ ~300 KB
+manifest.json ~280 KB
+launcher-version.json ~4 KB
+generate-manifest.py (Python, потоковое чтение)
+
+text
+
+## Файлы на ПК (Z:\ValheinRogue\)
+├── Launcher/ # лаунчер
+├── admin/ # админка
+├── valheimClient/ # игровой клиент
+├── devops_bridge.py # Local Bridge
+├── devops_bridge.bat # лаунчер для Bridge
+└── PROJECT_STATE.md
+
+text
+
+## Дизайн-система
+
+**Цвета:** abyss #0a0e14, panel #141923, gold #ffc24b, blizzard #0e9cff, emerald #2fbf71, blood #ff5566
+**Шрифты:** Cinzel (display), Inter (body), JetBrains Mono (mono)
+**Классы:** .glass, .glass-strong, .glass-popover, .modal-backdrop
+
+## Рабочие процессы
+
+### Выкатить новую версию лаунчера
+
+**Старый способ (SSH):**
+1. Бамп версии (package.json, tauri.conf.json, config.ts)
+2. rm -rf dist node_modules/.vite
+3. npm run build
+4. taskkill /F /IM valheim-rouge.exe
+5. npm run tauri build
+6. scp exe на VPS
+
+**Новый способ (DevOps Panel):**
+1. Бамп версии локально + git push
+2. Открыл админку → DevOps → Команды → «Собрать лаунчер»
+3. Ждёшь 5-10 минут
+4. Открываешь админку → Лаунчер → загружаешь exe
+5. Готово!
+
+**ВАЖНО:** имя exe без пробелов! `ValheimRouge_1.0.18_x64-setup.exe`
+
+### Загрузить моды
+
+1. Положить .dll в `Z:\ValheinRogue\valheimClient\BepInEx\plugins\`
+2. DevOps Panel → «Синхронизировать клиент»
+3. Моды → Манифест → версия `1.0.X` → Пересобрать
+
+### Опубликовать новость
+
+Админка → Новости → Новая → сохранить → Правка → загрузить картинку.
+Игроки видят через 1 минуту (кэш) или при возврате фокуса в лаунчер.
+
+### Применить патч бэка
+
+**Старый:** ssh → nano main.py → сохранить → systemctl restart valheim-api
+
+**Новый:** DevOps → Патчи → вставить Python-код → «Применить патч»
+Авто-бэкап + авто-откат при ошибке + рестарт.
+
+## Local Bridge (devops_bridge.py)
+
+**Что делает:** слушает очередь команд на VPS, выполняет на ПК.
+
+**Запуск:** двойной клик `devops_bridge.bat` в `Z:\ValheinRogue\`.
+
+**Токен:** установлен на VPS, прописан в `devops_bridge.py`.
+
+**Shell:** автоматически ищет Git Bash (`Z:\Git\bin\bash.exe`).
+
+**Whitelist команд** (только они могут выполняться):
+- `build-admin` — npm run build + scp
+- `build-launcher` — Tauri build
+- `sync-client` — заливка плагинов
+- `git-push-admin` — commit + push admin
+- `git-push-launcher` — commit + push launcher
+
+**Фичи:**
+- Асинхронное выполнение (threading) — ping не блокируется во время сборки
+- Auto-register на VPS при старте
+- Проверка синтаксиса патча перед применением
+- Auto-rollback бэкапа main.py при ошибке
+
+## Правила работы
+
+**Никогда не пишем пароли в чат.** Если случайно — меняй сразу через `passwd`.
+
+**SSH-ключ настроен:**
+```bash
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+ssh-copy-id root@62.217.178.72
+Теперь ssh и scp работают без пароля.
+
+Известные грабли
+npm в РФ — npm config set registry https://registry.npmmirror.com
+
+Vite кэш — перед сборкой rm -rf dist node_modules/.vite
+
+Pillow — в venv: /opt/valheim-api/venv/bin/pip install Pillow
+
+python-multipart — нужен для UploadFile
+
+nginx 413 — client_max_body_size 300M
+
+React hooks — ранний return перед useMemo = краш
+
+%20 в bat — имена файлов без пробелов
+
+Bash find|while — subshell теряет переменные, использовать Python
+
+sites-enabled .bak — nginx читает как активный. Бэкапы в /root/backups/nginx/
+
+DuckDNS — блокирует RU IP
+
+Cloudflare R2 — карта РФ не работает. Альтернативы: Yandex Object Storage
+
+sslip.io — wildcard DNS без регистрации
+
+VPS диск 8.6 GB — впритык, думать про Yandex Object Storage
+
+.mov не играет в браузере — конвертировать через ffmpeg
+
+Bridge offline во время долгих команд — фиксится threading (уже сделано)
+
+Bridge не нашёл Git Bash — прописать путь Z:\Git\bin\bash.exe
+
+Тестовые аккаунты
+Email	ID	Роль
+dimitri.sivok@yandex.ru	7	Админ (Митя)
+bjorn@rouge.com / secret123	6	Бьорн
+ragnar@rouge.com	5	Admin
+Реализовано
+Регистрация/логин (JWT), друзья, DM, общий чат
+
+Загрузка аватарки (ресайз 256×256)
+
+Форум Тинг с рангами (Новичок/Викинг/Легенда/Ярл)
+
+Профили игроков (статистика, достижения, табы)
+
+Рейл друзей Discord-style
+
+Video-фоны (логин, hero, main)
+
+Автообновление лаунчера с перезапуском
+
+Новости с VPS через API (без пересборки)
+
+Админка: Дашборд с графиками, Игроки (бан/разбан), Лаунчер, Новости, Форум, Чат, Kanban, Mods, DevOps
+
+DevOps: патчи, SQL, логи, system monitor, команды
+
+Local Bridge: polling, whitelisted команды, авто-register
+
+HTTPS на panel (Let's Encrypt)
+
+SSH-ключ без пароля
+
+Все проекты на GitHub
+
+В планах
+Yandex Object Storage для клиента (15 октября)
+
+Домен .ru
+
+WebSocket real-time (чат, онлайн, уведомления)
+
+Discord/Telegram бот
+
+Логи действий админов
+
+2FA для админки
+
+Переезд игрового сервера на отдельный VPS
+
+Автобэкапы БД
+
+Ключевые паттерны
+XHR с прогрессом
+ts
+xhr.upload.onprogress = (e) => {
+  if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+};
+React Portal для модалок
+tsx
+import { createPortal } from 'react-dom';
+return createPortal(<Modal />, document.body);
+Zustand persist
+ts
+create<State>()(persist((set) => ({...}), { name: 'key' }));
+Проверка админа в FastAPI
+python
+def admin_from_header(auth: str) -> dict:
+    user = user_from_header(auth)
+    # ... проверка is_admin
+    return user
+Threading в Bridge
+python
+thread = threading.Thread(target=runner, daemon=True)
+thread.start()
+Проверка Python-патча
+python
+import ast
+ast.parse(req.code)  # синтаксис
+# потом subprocess.run(["python3", "-c", code])
+# потом проверка main.py
+# при ошибке — auto-rollback
+SOS-команды
+API упал:
+
+text
+ssh root@62.217.178.72
+journalctl -u valheim-api -n 50 --no-pager
+systemctl restart valheim-api
+Bridge offline:
+
+Проверь что окно devops_bridge.bat открыто
+
+Ctrl+C → перезапусти двойным кликом
+
+Смотри Shell: при старте — должно быть Z:\Git\bin\bash.exe -c
+
+Место кончилось:
+
+text
+df -h /
+apt clean && apt autoremove -y
+journalctl --vacuum-time=3d
+cd /var/www/valheim/launcher && ls -t *.exe | tail -n +4 | xargs -r rm -v
+Vite кэш:
+
+text
+rm -rf dist node_modules/.vite && npm run build
+Стиль общения
+Обращение: "брат"
+
+Язык: русский, неформальный
+
+Пошаговые инструкции, по одной команде
+
+Всегда бэкап перед правкой
+
+Не гадать — читать файл целиком
+
+В новом чате
+Покажи этот файл и напиши: "читай PROJECT_STATE.md, продолжаем работу над X"
+
+Обновлено: 2026-10-11
+Версия лаунчера: 1.0.18
+Версия клиента: 1.0.5
+Версия Bridge: 1.0.0
+MDEOF
+
+wc -l PROJECT_STATE.md
+ls -la PROJECT_STATE.md
+
+text
+
+**Скинь вывод.** Жду ~350 строк.
+
+## Пуш на GitHub
+
+```bash
+cd /z/ValheinRogue/Launcher
+
+git add PROJECT_STATE.md
+git commit -m "docs: обновлён PROJECT_STATE — DevOps Panel, Local Bridge, Kanban, Mods"
+git push origin main
+Скинь вывод.
+
+Проверка
+Открой https://github.com/talifan11/Valheim-launcher/blob/main/PROJECT_STATE.md — увидишь обновлённый документ.
+
+Скриншот — сюда.
+
+Как запушится — следующая фаза: твои приколюхи. Скидывай идеи, разберу и предложу что вписать.
+
+Погнали.
+

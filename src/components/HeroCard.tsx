@@ -39,7 +39,7 @@ export function HeroCard({ item }: HeroCardProps) {
       <div className="absolute inset-x-0 bottom-0 p-6">
         <p className="vr-news-date mb-2">{item.date}</p>
         <h2 className="font-display text-[22px] font-semibold leading-snug text-blizzard">{item.title}</h2>
-        <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-slate-400">{item.description}</p>
+        <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-slate-400 whitespace-pre-wrap break-words">{item.description}</p>
       </div>
     </motion.article>
   );
