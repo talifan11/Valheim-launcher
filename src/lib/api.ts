@@ -171,6 +171,7 @@ export interface AuthResponse {
   email: string;
   username: string;
   avatar_url?: string | null;
+  banner_url?: string | null;
 }
 
 export function registerUser(
@@ -792,4 +793,33 @@ export async function getChangelogCommentsCounts(token: string): Promise<Record<
   });
   if (!res.ok) return {};
   return res.json();
+}
+
+
+// ============================================================
+// BANNER ПРОФИЛЯ
+// ============================================================
+
+export async function uploadBanner(file: File, token: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/profile/banner`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка загрузки' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.banner_url as string;
+}
+
+export async function deleteBanner(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/profile/banner`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
 }

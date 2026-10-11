@@ -20,12 +20,16 @@ interface ProfileState {
   avatarId: AvatarId;
   /** URL загруженной своей аватарки (относительный /avatars/...) */
   avatarUrl: string | null;
+  /** URL своей шапки профиля (относительный /banners/...) */
+  bannerUrl: string | null;
   setAvatar: (id: AvatarId) => void;
   setAvatarUrl: (url: string | null) => void;
+  setBannerUrl: (url: string | null) => void;
 }
 
 const STORAGE_KEY = 'valheim-rouge:avatar';
 const STORAGE_KEY_URL = 'valheim-rouge:avatar-url';
+const STORAGE_KEY_BANNER = 'valheim-rouge:banner-url';
 
 function loadAvatar(): AvatarId {
   try {
@@ -55,9 +59,18 @@ function loadAvatarUrl(): string | null {
   }
 }
 
+function loadBannerUrl(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY_BANNER);
+  } catch {
+    return null;
+  }
+}
+
 export const useProfileStore = create<ProfileState>((set) => ({
   avatarId: loadAvatar(),
   avatarUrl: loadAvatarUrl(),
+  bannerUrl: loadBannerUrl(),
 
   setAvatar: (id) => {
     set({ avatarId: id });
@@ -69,6 +82,16 @@ export const useProfileStore = create<ProfileState>((set) => ({
     try {
       if (url) localStorage.setItem(STORAGE_KEY_URL, url);
       else localStorage.removeItem(STORAGE_KEY_URL);
+    } catch {
+      // тихо
+    }
+  },
+
+  setBannerUrl: (url) => {
+    set({ bannerUrl: url });
+    try {
+      if (url) localStorage.setItem(STORAGE_KEY_BANNER, url);
+      else localStorage.removeItem(STORAGE_KEY_BANNER);
     } catch {
       // тихо
     }

@@ -17,10 +17,14 @@ import {
   LogOut,
   Activity,
   Lock,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { Friend } from '../store/useFriendsStore';
 import { useFriendsStore } from '../store/useFriendsStore';
 import { useProfileStore } from '../store/useProfileStore';
+import { AvatarUploadModal } from '../components/profile/AvatarUploadModal';
+import { BannerUploadModal } from '../components/profile/BannerUploadModal';
 import { useLauncherStore } from '../store/useLauncherStore';
 import { useChatStore } from '../store/useChatStore';
 import { toast } from '../store/useToastStore';
@@ -89,6 +93,8 @@ function formatLastSeen(minutes?: number): string {
 
 export function ProfileScreen({ userId, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [bannerModalOpen, setBannerModalOpen] = useState(false);
   const isSelf = userId === null;
   const isOverlay = !!onClose;
 
@@ -99,6 +105,7 @@ export function ProfileScreen({ userId, onClose }: Props) {
   const removeFriend = useFriendsStore((s) => s.removeFriend);
   const openDmWith = useChatStore((s) => s.openDmWith);
   const selfAvatarUrl = useProfileStore((s) => s.avatarUrl);
+  const selfBannerUrl = useProfileStore((s) => s.bannerUrl);
   const config = useLauncherStore((s) => s.config);
   const logout = useLauncherStore((s) => s.logout);
   const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
@@ -115,6 +122,7 @@ export function ProfileScreen({ userId, onClose }: Props) {
   const status = isSelf ? 'online' : (friend?.status ?? 'offline');
   const avatarUrl = isSelf ? selfAvatarUrl : (friend?.avatarUrl ?? null);
   const fullAvatarUrl = resolveAvatarUrl(avatarUrl);
+  const fullBannerUrl = isSelf ? resolveAvatarUrl(selfBannerUrl) : null;
   const lastSeen = isSelf ? 0 : friend?.lastSeenMinutes;
 
   const statusLabel =
@@ -164,7 +172,13 @@ export function ProfileScreen({ userId, onClose }: Props) {
     <div className={containerClass}>
       {/* ===== HERO ===== */}
       <div className="relative h-[260px] overflow-hidden">
-        {fullAvatarUrl ? (
+        {fullBannerUrl ? (
+          <img
+            src={fullBannerUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : fullAvatarUrl ? (
           <img
             src={fullAvatarUrl}
             alt=""
@@ -173,7 +187,31 @@ export function ProfileScreen({ userId, onClose }: Props) {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-blizzard/30 via-abyss to-abyss" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-abyss via-abyss/70 to-abyss/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-abyss via-abyss/60 to-abyss/20" />
+
+        {/* Кнопки редактирования — только для своего профиля */}
+        {isSelf && (
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAvatarModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass-strong text-[11px] uppercase tracking-[0.12em] font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              title="Сменить аватарку"
+            >
+              <Camera size={13} />
+              <span className="hidden sm:inline">Ава</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBannerModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass-strong text-[11px] uppercase tracking-[0.12em] font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              title="Сменить шапку"
+            >
+              <ImageIcon size={13} />
+              <span className="hidden sm:inline">Шапка</span>
+            </button>
+          </div>
+        )}
 
         {/* Watermark уровня */}
         <span className="absolute -right-6 top-1/2 -translate-y-1/2 font-display text-[220px] leading-none font-black text-white/[0.03] pointer-events-none select-none">
@@ -268,6 +306,16 @@ export function ProfileScreen({ userId, onClose }: Props) {
           <MemberCard isSelf={isSelf} />
         </aside>
       </div>
+
+      {/* Модалки редактирования профиля */}
+      <AvatarUploadModal
+        open={avatarModalOpen}
+        onClose={() => setAvatarModalOpen(false)}
+      />
+      <BannerUploadModal
+        open={bannerModalOpen}
+        onClose={() => setBannerModalOpen(false)}
+      />
     </div>
   );
 }
@@ -610,5 +658,6 @@ function MemberCard({ isSelf }: { isSelf: boolean }) {
         </div>
       </dl>
     </div>
+
   );
 }
