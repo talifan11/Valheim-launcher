@@ -3,12 +3,11 @@ import {
   Calendar,
   Package,
   User,
-  Settings,
-} from 'lucide-react';
+  Settings, MessageSquare } from 'lucide-react';
 import { useLauncherStore } from '../../store/useLauncherStore';
 import { useNotificationsStore } from '../../store/useNotificationsStore';
 
-export type TabId = 'news' | 'events' | 'mods' | 'account';
+export type TabId = 'news' | 'events' | 'mods' | 'forum' | 'account';
 
 interface Props {
   activeTab: TabId;
@@ -28,6 +27,7 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const BOTTOM_NAV: NavItem[] = [
+  { id: 'forum', icon: MessageSquare, label: 'Форум' },
   { id: 'account', icon: User, label: 'Профиль' },
 ];
 

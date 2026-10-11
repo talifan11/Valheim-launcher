@@ -170,6 +170,7 @@ export interface AuthResponse {
   user_id: number;
   email: string;
   username: string;
+  avatar_url?: string | null;
 }
 
 export function registerUser(
@@ -210,6 +211,7 @@ export interface UserSearchResult {
   user_id: number;
   username: string;
   online?: boolean;
+  avatar_url?: string | null;
 }
 
 export interface FriendsListResponse {
@@ -226,9 +228,20 @@ export interface RemoteMessage {
   created_at: string;
   from_username: string;
   own: boolean;
+  from_avatar_url?: string | null;
 }
 
 const API_BASE = 'http://62.217.178.72/api';
+
+/** Origin для картинок (без /api) */
+export const API_ORIGIN = 'http://62.217.178.72';
+
+/** Превратить относительный /avatars/x.png в полный URL */
+export function resolveAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_ORIGIN}${url}`;
+}
 
 /** Поиск игроков по имени */
 export async function searchUsers(query: string, token: string): Promise<UserSearchResult[]> {
@@ -359,4 +372,234 @@ export async function getOnlineUserIds(token: string): Promise<number[]> {
   } catch {
     return [];
   }
+}
+
+/** Получить общий чат (последние 100 сообщений) */
+export async function getGeneralMessages(token: string): Promise<RemoteMessage[]> {
+  const res = await fetch(`${API_BASE}/general/messages`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+  return res.json();
+}
+
+/** Отправить сообщение в общий чат */
+export async function sendGeneralMessage(text: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/general/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+}
+
+
+/** Загрузить свою аватарку (multipart) — возвращает относительный URL */
+export async function uploadAvatar(file: File, token: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/profile/avatar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка загрузки' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.avatar_url as string;
+}
+
+/** Удалить свою аватарку (сбросить на SVG) */
+export async function deleteAvatar(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/profile/avatar`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+}
+
+
+// ============================================================
+// ФОРУМ
+// ============================================================
+
+export interface ForumCategory {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  thread_count: number;
+}
+
+export interface ForumRank {
+  name: string;
+  rune: string;
+  tier: 'jarl' | 'legend' | 'viking' | 'novice';
+}
+
+export interface ForumAuthor {
+  user_id: number;
+  username: string;
+  avatar_url?: string | null;
+  reputation: number;
+  rank: ForumRank;
+}
+
+export interface ForumThreadPreview {
+  id: number;
+  title: string;
+  body_preview: string;
+  created_at: string;
+  updated_at: string;
+  pinned: boolean;
+  locked: boolean;
+  views: number;
+  author: ForumAuthor;
+  category: { id: number; slug: string; title: string };
+  reply_count: number;
+  tags: string[];
+}
+
+export interface ForumPost {
+  id: number;
+  body: string;
+  created_at: string;
+  author: ForumAuthor;
+}
+
+export interface ForumThreadFull {
+  id: number;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  pinned: boolean;
+  locked: boolean;
+  views: number;
+  author: ForumAuthor;
+  category: { id: number; slug: string; title: string };
+  posts: ForumPost[];
+  tags: string[];
+}
+
+export async function getForumCategories(token: string): Promise<ForumCategory[]> {
+  const res = await fetch(`${API_BASE}/forum/categories`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка категорий: ${res.status}`);
+  return res.json();
+}
+
+export async function getForumThreads(token: string, categorySlug?: string | null): Promise<ForumThreadPreview[]> {
+  const q = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : '';
+  const res = await fetch(`${API_BASE}/forum/threads${q}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка тредов: ${res.status}`);
+  return res.json();
+}
+
+export async function getForumThread(token: string, threadId: number): Promise<ForumThreadFull> {
+  const res = await fetch(`${API_BASE}/forum/threads/${threadId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка треда: ${res.status}`);
+  return res.json();
+}
+
+export async function createForumThread(
+  token: string,
+  categoryId: number,
+  title: string,
+  body: string,
+): Promise<{ status: string; thread_id: number }> {
+  const res = await fetch(`${API_BASE}/forum/threads`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category_id: categoryId, title, body }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createForumPost(token: string, threadId: number, body: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/forum/threads/${threadId}/posts`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Ошибка' }));
+    throw new Error(data.detail || `Ошибка: ${res.status}`);
+  }
+}
+
+
+export interface ForumStats {
+  threads: number;
+  posts: number;
+  users: number;
+  online: number;
+}
+
+export interface ForumTopAuthor {
+  user_id: number;
+  username: string;
+  avatar_url?: string | null;
+  post_count: number;
+  thread_count: number;
+  reputation: number;
+  rank: ForumRank;
+}
+
+export async function getForumStats(token: string): Promise<ForumStats> {
+  const res = await fetch(`${API_BASE}/forum/stats`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка статистики: ${res.status}`);
+  return res.json();
+}
+
+export async function getForumTopAuthors(token: string, limit = 5): Promise<ForumTopAuthor[]> {
+  const res = await fetch(`${API_BASE}/forum/authors/top?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Ошибка топ-авторов: ${res.status}`);
+  return res.json();
+}
+
+
+// ============================================================
+// НОВОСТИ (публичные)
+// ============================================================
+
+export interface ApiNewsItem {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  tag: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+  published: boolean;
+  pinned: boolean;
+  author: { username: string; avatarUrl: string | null } | null;
+}
+
+export async function getNews(): Promise<ApiNewsItem[]> {
+  const res = await fetch(`${API_BASE}/news`);
+  if (!res.ok) throw new Error(`Ошибка новостей: ${res.status}`);
+  return res.json();
 }

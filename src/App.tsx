@@ -11,6 +11,7 @@ import { sendHeartbeat } from './lib/api';
 import { useUpdateStore } from './store/useUpdateStore';
 import { useAppSettingsStore } from './store/useAppSettingsStore';
 import { useFriendsStore } from './store/useFriendsStore';
+import { useNewsStore } from './store/useNewsStore';
 import { DEV_SKIP_UPDATE } from './config';
 import type { ConnectionState } from './components/layout/FloatingTopBar';
 
@@ -26,6 +27,7 @@ export default function App() {
 
   const [connection, setConnection] = useState<ConnectionState>('checking');
   const startFriendsPolling = useFriendsStore((s) => s.startPolling);
+  const loadNews = useNewsStore((s) => s.loadNews);
   const authToken = useLauncherStore((s) => s.authToken);
 
   // Heartbeat: раз в 30 секунд сообщаем серверу что мы онлайн
@@ -56,6 +58,11 @@ export default function App() {
     void loadConfig();
   }, [loadConfig]);
 
+  // Загрузка новостей при старте (если кэш старше 5 минут)
+  useEffect(() => {
+    void loadNews();
+  }, [loadNews]);
+
   useEffect(() => {
     // В dev-режиме проверку обновлений не запускаем.
     if (DEV_SKIP_UPDATE) return;
@@ -68,10 +75,23 @@ export default function App() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-abyss">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url(/backgrounds/main.jpg)' }}
-      />
+      {/* Видео-фон основного лаунчера — работает только когда залогинен и игра установлена */}
+      {isAuthenticated && !showInstall ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="http://62.217.178.72/videos/mainscreen.mp4" type="video/mp4" />
+        </video>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: 'url(/backgrounds/main.jpg)' }}
+        />
+      )}
       <div className="absolute inset-0 bg-[#0a0e14]/85" />
 
       <div

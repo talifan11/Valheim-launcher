@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, Calendar, Newspaper } from 'lucide-react';
 import type { NewsItem } from '../../data/news';
+import { resolveNewsImage } from '../../lib/newsImage';
 import { useFavoritesStore } from '../../store/useFavoritesStore';
 
 interface Props {
@@ -41,7 +42,7 @@ export function NewsDetailModal({ item, onClose }: Props) {
           <div className="relative h-56 shrink-0">
             {!imgError ? (
               <img
-                src={`/news/${item.image}.jpg`}
+                src={resolveNewsImage(item.image)}
                 alt={item.title}
                 className="w-full h-full object-cover"
                 onError={() => setImgError(true)}

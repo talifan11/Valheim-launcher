@@ -4,6 +4,7 @@ import { useLauncherStore } from '../../store/useLauncherStore';
 import { ShieldLogo } from '../ShieldLogo';
 import { ProfileMenu } from '../profile/ProfileMenu';
 import { NotificationsMenu } from '../notifications/NotificationsMenu';
+import { LauncherUpdateBadge } from '../launcher-update/LauncherUpdateBadge';
 
 export type ConnectionState = 'checking' | 'online' | 'active' | 'offline';
 
@@ -43,8 +44,10 @@ export function FloatingTopBar({ connection }: Props) {
 
   return (
     <div className="float-topbar-wrap animate-fade-in-up" data-tauri-drag-region>
-      <div className="float-topbar glass-strong flex items-center gap-3 h-14 px-4 rounded-[28px] overflow-visible"
-        data-onboarding="topbar">
+      <div
+        className="float-topbar glass-strong flex items-center gap-3 h-14 px-4 rounded-[28px] overflow-visible"
+        data-onboarding="topbar"
+      >
         <span className="text-gold shrink-0">
           <ShieldLogo size={22} />
         </span>
@@ -75,8 +78,8 @@ export function FloatingTopBar({ connection }: Props) {
 
         <span className="w-px h-6 bg-white/10 shrink-0" />
 
+                <LauncherUpdateBadge />
         <NotificationsMenu />
-
         <ProfileMenu />
       </div>
     </div>

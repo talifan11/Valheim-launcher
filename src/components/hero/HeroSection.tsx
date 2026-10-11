@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Star } from 'lucide-react';
 import { ShieldLogo } from '../ShieldLogo';
-import { news } from '../../data/news';
+import { useNewsStore } from '../../store/useNewsStore';
 import { useFavoritesStore } from '../../store/useFavoritesStore';
 
 export function HeroSection() {
   const [imgError, setImgError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const favIds = useFavoritesStore((s) => s.ids);
   const toggleFav = useFavoritesStore((s) => s.toggle);
 
-  const featured = news[0];
+  const items = useNewsStore((s) => s.items);
+  const featured = items[0];
   const isFav = featured ? favIds.includes(featured.id) : false;
 
   const handleFav = () => {
@@ -17,9 +19,27 @@ export function HeroSection() {
     toggleFav(featured.id);
   };
 
+  const handleEnter = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    void v.play();
+  };
+
+  const handleLeave = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  };
+
   return (
-    <div className="relative w-full rounded-[24px] overflow-hidden border border-white/[0.06] shadow-[0_24px_64px_rgba(0,0,0,0.55)]">
-      <div className="relative w-full" style={{ aspectRatio: '880 / 360' }}>
+    <div
+      className="relative w-full rounded-[24px] overflow-hidden border border-white/[0.06] shadow-[0_24px_64px_rgba(0,0,0,0.55)] group/hero"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <div className="relative w-full" style={{ aspectRatio: '880 / 495' }}>
         {!imgError ? (
           <img
             src="/backgrounds/hero.jpg"
@@ -36,9 +56,21 @@ export function HeroSection() {
             }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0e14]/20 via-[#0a0e14]/50 to-[#0a0e14]/90" />
 
-        <div className="absolute inset-0 p-8 flex flex-col justify-end">
+        <video
+          ref={videoRef}
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/hero:opacity-100 transition-opacity duration-500"
+        >
+          <source src="http://62.217.178.72/videos/hero.mp4" type="video/mp4" />
+        </video>
+
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0e14]/20 via-[#0a0e14]/50 to-[#0a0e14]/90 pointer-events-none" />
+
+        <div className="absolute inset-0 p-8 flex flex-col justify-end pointer-events-none">
           <div className="flex items-center gap-4 mb-4">
             <span className="text-gold drop-shadow-lg">
               <ShieldLogo size={44} />
@@ -56,7 +88,7 @@ export function HeroSection() {
             Онлайн-сервер для выживания в суровых землях викингов.
             Исследуй фьорды, строй укрепления, сражайся с ётунами.
           </p>
-          <div>
+          <div className="pointer-events-auto">
             <button
               type="button"
               onClick={handleFav}

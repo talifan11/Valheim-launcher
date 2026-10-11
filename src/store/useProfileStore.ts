@@ -18,10 +18,14 @@ export type AvatarId = (typeof AVATARS)[number];
 
 interface ProfileState {
   avatarId: AvatarId;
+  /** URL загруженной своей аватарки (относительный /avatars/...) */
+  avatarUrl: string | null;
   setAvatar: (id: AvatarId) => void;
+  setAvatarUrl: (url: string | null) => void;
 }
 
 const STORAGE_KEY = 'valheim-rouge:avatar';
+const STORAGE_KEY_URL = 'valheim-rouge:avatar-url';
 
 function loadAvatar(): AvatarId {
   try {
@@ -43,12 +47,31 @@ function persistAvatar(id: AvatarId): void {
   }
 }
 
+function loadAvatarUrl(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY_URL);
+  } catch {
+    return null;
+  }
+}
+
 export const useProfileStore = create<ProfileState>((set) => ({
   avatarId: loadAvatar(),
+  avatarUrl: loadAvatarUrl(),
 
   setAvatar: (id) => {
     set({ avatarId: id });
     persistAvatar(id);
+  },
+
+  setAvatarUrl: (url) => {
+    set({ avatarUrl: url });
+    try {
+      if (url) localStorage.setItem(STORAGE_KEY_URL, url);
+      else localStorage.removeItem(STORAGE_KEY_URL);
+    } catch {
+      // тихо
+    }
   },
 }));
 

@@ -694,15 +694,61 @@ pub fn download_and_install_update(_app: AppHandle, url: String) -> Result<(), S
     // Даём антивирусу время закончить сканирование
     std::thread::sleep(std::time::Duration::from_millis(1500));
 
-    // Пробуем запустить через opener (использует ShellExecute на Windows)
+    // Путь к текущему exe — чтобы после установки запустить его же
+    let current_exe = std::env::current_exe()
+        .map_err(|e| format!("Не удалось получить путь к лаунчеру: {e}"))?;
+
+    // BAT-скрипт: ждёт завершения установщика, потом запускает новую версию.
+    // После этого сам удаляется.
+    let bat_path = updates_dir.join("restart.bat");
+    let bat_content = format!(
+        "@echo off\r\n\
+         chcp 65001 >nul\r\n\
+         timeout /t 2 /nobreak >nul\r\n\
+         start /wait \"\" \"{installer}\" /S\r\n\
+         timeout /t 3 /nobreak >nul\r\n\
+         start \"\" \"{app}\"\r\n\
+         timeout /t 2 /nobreak >nul\r\n\
+         del \"%~f0\"\r\n",
+        installer = dest.display(),
+        app = current_exe.display(),
+    );
+    std::fs::write(&bat_path, bat_content)
+        .map_err(|e| format!("Не удалось записать скрипт перезапуска: {e}"))?;
+
+    logger::log_info("Updater", &format!("Скрипт перезапуска: {}", bat_path.display()));
+
+    // Пробуем запустить bat-скрипт (он и установит, и перезапустит)
     let mut last_err = String::new();
     let mut success = false;
 
+    // ТИХАЯ установка: NSIS-флаг /S = silent mode.
+    // Без окон, без кликов. После установки bat-скрипт сам перезапустит лаунчер.
     for attempt in 1..=5 {
-        match opener::open(&dest) {
+        let result = {
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                std::process::Command::new("cmd")
+                    .arg("/C")
+                    .arg(&bat_path)
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .spawn()
+            }
+            #[cfg(not(windows))]
+            {
+                std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(format!("'{}' /S; sleep 3; '{}'", dest.display(), current_exe.display()))
+                    .spawn()
+            }
+        };
+
+        match result {
             Ok(_) => {
                 success = true;
-                logger::log_info("Updater", &format!("Установщик запущен (попытка {attempt})"));
+                logger::log_info("Updater", &format!("Установщик запущен в тихом режиме (попытка {attempt})"));
                 break;
             }
             Err(e) => {
@@ -731,6 +777,8 @@ pub struct AuthResponse {
     pub user_id: i64,
     pub email: String,
     pub username: String,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]

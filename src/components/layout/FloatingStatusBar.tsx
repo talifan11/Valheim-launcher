@@ -159,7 +159,7 @@ export function FloatingStatusBar() {
   };
 
   return (
-    <div className="float-bottombar-wrap animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
+    <div data-onboarding="status-bar" className="float-bottombar-wrap animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
       <div
         className="float-bottombar glass-solid relative flex items-center gap-3 h-16 px-5 rounded-[32px]"
         style={{

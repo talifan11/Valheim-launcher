@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type { LauncherConfig } from '../types';
 import { DEFAULT_CONFIG } from '../types';
 import * as api from '../lib/api';
+import { useProfileStore } from './useProfileStore';
 
 interface LauncherState {
   /** Текущая конфигурация из config.json */
@@ -70,7 +71,10 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
     await get().updateConfig({ username });
   },
 
-  logout: () => set({ isAuthenticated: false }),
+  logout: () => {
+    useProfileStore.getState().setAvatarUrl(null);
+    set({ isAuthenticated: false, authToken: null, userEmail: null });
+  },
 
   updateConfig: async (patch: Partial<LauncherConfig>) => {
     const next: LauncherConfig = { ...get().config, ...patch };
@@ -116,6 +120,9 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   dismissError: () => set({ errorMessage: null }),
   loginWithApi: async (email: string, password: string) => {
     const result = await api.loginUser(email, password);
+    if (result.avatar_url !== undefined) {
+      useProfileStore.getState().setAvatarUrl(result.avatar_url ?? null);
+    }
     set({
       isAuthenticated: true,
       authToken: result.token,
@@ -127,6 +134,9 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
 
   registerWithApi: async (email: string, password: string, username: string) => {
     const result = await api.registerUser(email, password, username);
+    if (result.avatar_url !== undefined) {
+      useProfileStore.getState().setAvatarUrl(result.avatar_url ?? null);
+    }
     set({
       isAuthenticated: true,
       authToken: result.token,

@@ -6,21 +6,27 @@ import {
   BarChart3,
   Palette,
   Check,
+  Image as ImageIcon,
+  Users,
 } from 'lucide-react';
 import { useProfileStore, AVATARS } from '../../store/useProfileStore';
 import { useLauncherStore } from '../../store/useLauncherStore';
+import { useProfileViewStore } from '../../store/useProfileViewStore';
 import { Avatar } from '../ui/Avatar';
+import { AvatarUploadModal } from './AvatarUploadModal';
 
 export function ProfileMenu() {
   const config = useLauncherStore((s) => s.config);
   const logout = useLauncherStore((s) => s.logout);
   const setSettingsOpen = useLauncherStore((s) => s.setSettingsOpen);
+  const openProfile = useProfileViewStore((s) => s.openProfile);
 
   const avatarId = useProfileStore((s) => s.avatarId);
   const setAvatar = useProfileStore((s) => s.setAvatar);
 
   const [open, setOpen] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Закрытие по клику мимо
@@ -85,6 +91,18 @@ export function ProfileMenu() {
               <>
                 <button
                   type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openProfile(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/[0.05] transition-colors text-left"
+                >
+                  <Users size={15} className="text-gold" />
+                  Мой профиль
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowAvatarPicker(true)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/[0.05] transition-colors text-left"
                 >
@@ -143,6 +161,19 @@ export function ProfileMenu() {
                   </button>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAvatarPicker(false);
+                    setUploadOpen(true);
+                  }}
+                  className="mx-3 mb-1 inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gold/30 text-gold hover:bg-gold/10 transition-colors text-xs font-semibold"
+                  style={{ width: 'calc(100% - 24px)' }}
+                >
+                  <ImageIcon size={14} />
+                  Загрузить свою
+                </button>
+
                 <div className="p-3 grid grid-cols-4 gap-2">
                   {AVATARS.map((id) => {
                     const active = id === avatarId;
@@ -173,6 +204,8 @@ export function ProfileMenu() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AvatarUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }

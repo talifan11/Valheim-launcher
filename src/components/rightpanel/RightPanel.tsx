@@ -22,7 +22,7 @@ import { PanelContextMenu, type PanelContextState } from './PanelContextMenu';
 import { Avatar } from '../ui/Avatar';
 
 interface Props {
-  onOpenFriendProfile: (id: string) => void;
+  onOpenFriendProfile: (userId: number) => void;
 }
 
 export function RightPanel({ onOpenFriendProfile }: Props) {
@@ -71,7 +71,7 @@ export function RightPanel({ onOpenFriendProfile }: Props) {
       toast.success('Приглашение отправлено ' + targetName);
     } else if (action === 'chat') {
       if (friend) {
-        openDmWith(String(friend.userId), friend.name);
+        openDmWith(friend.userId, friend.name);
       }
     } else if (action === 'add') {
       const player = useServerPlayersStore.getState().players.find((p) => p.id === id);
@@ -206,7 +206,7 @@ export function RightPanel({ onOpenFriendProfile }: Props) {
 
 interface FriendsListProps {
   friends: Friend[];
-  onOpenProfile: (id: string) => void;
+  onOpenProfile: (userId: number) => void;
   onContext: (
     e: React.MouseEvent,
     kind: 'friend' | 'server',
@@ -301,7 +301,7 @@ function FriendsList({ friends, onOpenProfile, onContext }: FriendsListProps) {
           {friends.map((friend) => (
             <li key={friend.id}>
               <div
-                onClick={() => onOpenProfile(friend.id)}
+                onClick={() => onOpenProfile(friend.userId)}
                 onContextMenu={(e) => onContext(e, 'friend', friend.id, friend.name)}
                 className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
               >

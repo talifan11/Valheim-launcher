@@ -1,19 +1,23 @@
 import { getFriendAvatar, useProfileStore, type AvatarId } from '../../store/useProfileStore';
+import { useFriendsStore } from '../../store/useFriendsStore';
+import { resolveAvatarUrl } from '../../lib/api';
 
 interface Props {
   /** Размер в пикселях */
   size?: number;
   /** id друга для детерминированного выбора аватара (только если не self) */
   friendId?: string;
-  /** Явно заданный avatarId */
+  /** Явно заданный avatarId — ОВЕРРАЙД, рендерит SVG (используется в пикере) */
   avatarId?: AvatarId;
+  /** Явный URL загруженной картинки (перебивает self/friend) */
+  avatarUrl?: string | null;
   /** Это аватар текущего пользователя */
   self?: boolean;
   /** Показать зелёный индикатор онлайн */
   online?: boolean;
   /** Показать золотой индикатор "в игре" */
   inGame?: boolean;
-  /** Обводка-цвет статуса (используется как border) */
+  /** Обводка-цвет статуса (border) */
   ringColor?: 'emerald' | 'gold' | 'slate' | 'none';
   className?: string;
 }
@@ -22,6 +26,7 @@ export function Avatar({
   size = 32,
   friendId,
   avatarId,
+  avatarUrl,
   self = false,
   online = false,
   inGame = false,
@@ -29,8 +34,28 @@ export function Avatar({
   className = '',
 }: Props) {
   const selfAvatar = useProfileStore((s) => s.avatarId);
+  const selfAvatarUrl = useProfileStore((s) => s.avatarUrl);
+  const friend = useFriendsStore((s) =>
+    friendId ? s.friends.find((f) => f.id === friendId) : undefined
+  );
 
-  const resolved: AvatarId = avatarId
+  // Приоритет источника:
+  // 1. Явный avatarId → всегда SVG (пикер)
+  // 2. Явный avatarUrl (prop) → картинка
+  // 3. self → avatarUrl из profileStore
+  // 4. friendId → avatarUrl друга из friendsStore
+  const isExplicitSvg = avatarId !== undefined;
+
+  let resolvedUrl: string | null = null;
+  if (!isExplicitSvg) {
+    if (avatarUrl !== undefined) resolvedUrl = avatarUrl;
+    else if (self) resolvedUrl = selfAvatarUrl;
+    else if (friend) resolvedUrl = friend.avatarUrl ?? null;
+  }
+
+  const fullUrl = resolveAvatarUrl(resolvedUrl);
+
+  const resolvedId: AvatarId = avatarId
     ? avatarId
     : self
       ? selfAvatar
@@ -51,14 +76,23 @@ export function Avatar({
 
   return (
     <div className={`relative inline-block shrink-0 ${className}`}>
-      <img
-        src={`/assets/svg/avatars/${resolved}.svg`}
-        alt=""
-        width={size}
-        height={size}
-        className={`rounded-full bg-abyss ${ringClass}`}
-        style={{ width: size, height: size }}
-      />
+      {fullUrl ? (
+        <img
+          src={fullUrl}
+          alt=""
+          className={`rounded-full bg-abyss object-cover ${ringClass}`}
+          style={{ width: size, height: size }}
+        />
+      ) : (
+        <img
+          src={`/assets/svg/avatars/${resolvedId}.svg`}
+          alt=""
+          width={size}
+          height={size}
+          className={`rounded-full bg-abyss ${ringClass}`}
+          style={{ width: size, height: size }}
+        />
+      )}
       {inGame && (
         <span
           className="absolute bottom-0 right-0 rounded-full bg-gold border-2 border-[#141923]"

@@ -6,8 +6,12 @@ export interface NewsItem {
   date: string;
   title: string;
   description: string;
-  /** Имя файла картинки в public/news без расширения */
+  /** Полный URL картинки (или старый ID для fallback) */
   image: string;
+  /** Тег для категории: Анонс / Обновление / Событие */
+  tag?: string;
+  /** Закреплено ли наверху */
+  pinned?: boolean;
 }
 
 export const news: NewsItem[] = [

@@ -18,6 +18,8 @@ export function ChatPanel() {
   const setActiveChannel = useChatStore((s) => s.setActiveChannel);
   const messages = useChatStore((s) => s.messages);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const pollActiveChannel = useChatStore((s) => s.pollActiveChannel);
+  const loadMessages = useChatStore((s) => s.loadMessages);
   const unread = useChatStore((s) => s.unread);
   const clearChannel = useChatStore((s) => s.clearChannel);
   const deleteChannel = useChatStore((s) => s.deleteChannel);
@@ -35,6 +37,21 @@ export function ChatPanel() {
     }
   }, [channelMessages.length, open, activeChannelId]);
 
+  // При открытии чата — сразу подгружаем сообщения активного канала
+  useEffect(() => {
+    if (!open) return;
+    void loadMessages(activeChannelId);
+  }, [open, activeChannelId, loadMessages]);
+
+  // Поллинг новых сообщений каждые 5 секунд, пока чат открыт
+  useEffect(() => {
+    if (!open) return;
+    const interval = window.setInterval(() => {
+      void pollActiveChannel();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [open, activeChannelId, pollActiveChannel]);
+
   // Закрытие контекстного меню по клику мимо
   useEffect(() => {
     if (!contextMenu) return;
@@ -51,7 +68,7 @@ export function ChatPanel() {
 
   const handleSend = () => {
     if (!draft.trim()) return;
-    sendMessage(draft);
+    void sendMessage(draft);
     setDraft('');
   };
 

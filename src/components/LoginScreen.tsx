@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLauncherStore } from '../store/useLauncherStore';
+import { LAUNCHER_VERSION } from '../config';
 
 const REMEMBER_KEY = 'valheim-rouge:remembered-email';
 
@@ -70,10 +71,17 @@ export function LoginScreen() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center scale-105"
-        style={{ backgroundImage: 'url(/backgrounds/main.jpg)', filter: 'blur(3px) brightness(0.45)' }}
-      />
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover scale-105"
+        style={{ filter: 'blur(2px) brightness(0.55)' }}
+      >
+        <source src="http://62.217.178.72/videos/login-bg.mp4" type="video/mp4" />
+      </video>
+      <div className="absolute inset-0 bg-gradient-to-b from-abyss/40 via-abyss/30 to-abyss/70 pointer-events-none" />
 
       <div className="absolute inset-x-0 top-[12%] flex flex-col items-center z-10">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center">
@@ -159,7 +167,7 @@ export function LoginScreen() {
             <span className="relative z-10">{busy ? 'Подождите...' : (tab === 'login' ? 'Войти' : 'Создать аккаунт')}</span>
           </button>
 
-          <div className="mt-8 text-center text-[10px] tracking-[0.3em] text-slate-400 uppercase font-mono">v0.1.0</div>
+          <div className="mt-8 text-center text-[10px] tracking-[0.3em] text-slate-400 uppercase font-mono">v{LAUNCHER_VERSION}</div>
         </form>
       </motion.div>
 

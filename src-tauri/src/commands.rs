@@ -11,6 +11,12 @@ use std::process::Command;
 use std::time::Duration;
 use tauri::Manager;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 // Имя исполняемого файла игры.
 const GAME_EXE: &str = "valheim.exe";
 
@@ -99,9 +105,11 @@ fn is_local_server_running() -> bool {
     #[cfg(windows)]
     {
         let filter = format!("IMAGENAME eq {}", SERVER_EXE);
-        let output = Command::new("tasklist")
-            .args(["/FI", &filter, "/NH"])
-            .output();
+        let mut cmd = Command::new("tasklist");
+        cmd.args(["/FI", &filter, "/NH"]);
+        #[cfg(windows)]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        let output = cmd.output();
         if let Ok(out) = output {
             let stdout = String::from_utf8_lossy(&out.stdout);
             return stdout.to_lowercase().contains(&SERVER_EXE.to_lowercase());
@@ -144,9 +152,13 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
     #[cfg(windows)]
     {
-        Command::new("explorer")
-            .arg(trimmed)
-            .spawn()
+        {
+            let mut cmd = Command::new("explorer");
+            cmd.arg(trimmed);
+            #[cfg(windows)]
+            cmd.creation_flags(CREATE_NO_WINDOW);
+            cmd.spawn()
+        }
             .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;
     }
     #[cfg(target_os = "macos")]

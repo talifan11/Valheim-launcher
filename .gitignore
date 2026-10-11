@@ -39,3 +39,21 @@ restore-valheim-rouge.sh
 .DS_Store
 Thumbs.db
 qwen_custom.Modelfile
+
+# Видео и большие медиа (не коммитим в git)
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Мусорные артефакты
+tsc
+valheim-rouge@*
+valheim-rouge*.tar.gz
+valheim-rouge*.tar.gz.b64
+*.bundle
+
+# Бэкапы манифестов
+manifest.json.bak-*
+manifest.json.broken-*
+launcher-version.json.bak-*

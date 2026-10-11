@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Newspaper } from 'lucide-react';
-import { news, type NewsItem } from '../../data/news';
+import type { NewsItem } from '../../data/news';
+import { useNewsStore } from '../../store/useNewsStore';
+import { resolveNewsImage } from '../../lib/newsImage';
 
 const FALLBACKS = [
   'linear-gradient(135deg, #2a1a3e 0%, #0a0e14 100%)',
@@ -8,6 +10,8 @@ const FALLBACKS = [
   'linear-gradient(135deg, #3a2418 0%, #0a0e14 100%)',
   'linear-gradient(135deg, #1a3025 0%, #0a0e14 100%)',
 ];
+
+
 
 interface Props {
   onOpenNews: (item: NewsItem) => void;
@@ -25,7 +29,7 @@ function NewsCard({ item, onClick }: { item: NewsItem; onClick: () => void }) {
       <div className="relative h-32 overflow-hidden">
         {!error ? (
           <img
-            src={`/news/${item.image}.jpg`}
+            src={resolveNewsImage(item.image)}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             onError={() => setError(true)}
@@ -54,16 +58,17 @@ function NewsCard({ item, onClick }: { item: NewsItem; onClick: () => void }) {
 }
 
 export function NewsGrid({ onOpenNews }: Props) {
+  const items = useNewsStore((s) => s.items);
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3 px-1">
         <h2 className="font-display text-lg tracking-wide text-white">Новости сервера</h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-          {news.length} обновлений
+          {items.length} обновлений
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {news.map((item, i) => (
+        {items.map((item, i) => (
           <div key={item.id} className="animate-fade-in-up" style={{ animationDelay: `${0.15 + i * 0.05}s` }}>
             <NewsCard item={item} onClick={() => onOpenNews(item)} />
           </div>

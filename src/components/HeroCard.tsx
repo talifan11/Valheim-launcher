@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Newspaper } from 'lucide-react';
 import type { NewsItem } from '../data/news';
+import { resolveNewsImage } from '../lib/newsImage';
 
 interface HeroCardProps {
   item: NewsItem;
@@ -21,7 +22,7 @@ export function HeroCard({ item }: HeroCardProps) {
     >
       {!imageFailed ? (
         <img
-          src={`/news/${item.image}.jpg`}
+          src={resolveNewsImage(item.image)}
           alt=""
           draggable={false}
           onError={() => setImageFailed(true)}

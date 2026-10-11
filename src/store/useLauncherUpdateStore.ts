@@ -1,6 +1,7 @@
 // Проверка обновлений лаунчера.
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { invoke } from '@tauri-apps/api/core';
 import { LAUNCHER_VERSION } from '../config';
 
@@ -14,29 +15,47 @@ export interface LauncherUpdate {
 interface LauncherUpdateState {
   available: LauncherUpdate | null;
   checking: boolean;
-  dismissed: boolean;
+  skippedVersion: string | null;
 
   check: () => Promise<void>;
   dismiss: () => void;
+  resetSkipped: () => void;
 }
 
-export const useLauncherUpdateStore = create<LauncherUpdateState>((set) => ({
-  available: null,
-  checking: false,
-  dismissed: false,
+export const useLauncherUpdateStore = create<LauncherUpdateState>()(
+  persist(
+    (set, get) => ({
+      available: null,
+      checking: false,
+      skippedVersion: null,
 
-  check: async () => {
-    set({ checking: true });
-    try {
-      const result = await invoke<LauncherUpdate | null>('check_launcher_update', {
-        currentVersion: LAUNCHER_VERSION,
-      });
-      set({ available: result, checking: false });
-    } catch (err) {
-      console.warn('Ошибка проверки обновления лаунчера:', err);
-      set({ checking: false });
+      check: async () => {
+        set({ checking: true });
+        try {
+          const result = await invoke<LauncherUpdate | null>('check_launcher_update', {
+            currentVersion: LAUNCHER_VERSION,
+          });
+          set({ available: result, checking: false });
+        } catch (err) {
+          console.warn('Ошибка проверки обновления лаунчера:', err);
+          set({ checking: false });
+        }
+      },
+
+      dismiss: () => {
+        const version = get().available?.version;
+        set({
+          available: null,
+          skippedVersion: version ?? get().skippedVersion,
+        });
+      },
+
+      resetSkipped: () => set({ skippedVersion: null }),
+    }),
+    {
+      name: 'valheim-rouge:launcher-update',
+      version: 1,
+      partialize: (state) => ({ skippedVersion: state.skippedVersion }),
     }
-  },
-
-  dismiss: () => set({ dismissed: true }),
-}));
+  )
+);

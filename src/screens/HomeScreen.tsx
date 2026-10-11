@@ -2,20 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FloatingTopBar, type ConnectionState } from '../components/layout/FloatingTopBar';
 import { IconRail, type TabId } from '../components/layout/IconRail';
-import { PlayersRail } from '../components/layout/PlayersRail';
 import { CornerWidgets } from '../components/layout/CornerWidgets';
 import { FloatingStatusBar } from '../components/layout/FloatingStatusBar';
 import { HeroSection } from '../components/hero/HeroSection';
 import { NewsGrid } from '../components/news/NewsGrid';
 import { NewsDetailModal } from '../components/news/NewsDetailModal';
-import { FriendProfile } from '../components/friends/FriendProfile';
 import { FriendContextMenu, type ContextMenuState } from '../components/friends/FriendContextMenu';
 import { AddFriendModal } from '../components/friends/AddFriendModal';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { RightPanel } from '../components/rightpanel/RightPanel';
+import { FriendsRail } from '../components/layout/FriendsRail';
 import { Onboarding } from '../components/onboarding/Onboarding';
-import { LauncherUpdateModal } from '../components/launcher-update/LauncherUpdateModal';
-import { AccountScreen } from './AccountScreen';
+import { ProfileScreen } from './ProfileScreen';
+import { ForumScreen } from './ForumScreen';
 import { EventsScreen } from './EventsScreen';
 import { ModsScreen } from './ModsScreen';
 import { useLauncherStore } from '../store/useLauncherStore';
@@ -23,6 +22,7 @@ import { useFriendsStore } from '../store/useFriendsStore';
 import { useChatStore } from '../store/useChatStore';
 import { toast } from '../store/useToastStore';
 import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useProfileViewStore } from '../store/useProfileViewStore';
 import { useLauncherUpdateStore } from '../store/useLauncherUpdateStore';
 import { useAppSettingsStore } from '../store/useAppSettingsStore';
 import type { NewsItem } from '../data/news';
@@ -41,13 +41,14 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [openNews, setOpenNews] = useState<NewsItem | null>(null);
   const timerRef = useRef<number | null>(null);
-
-  const activeProfileId = useFriendsStore((s) => s.activeProfileId);
-  const setActiveProfile = useFriendsStore((s) => s.setActiveProfile);
   const removeFriend = useFriendsStore((s) => s.removeFriend);
 
   const openDmWith = useChatStore((s) => s.openDmWith);
   const onboardingCompleted = useOnboardingStore((s) => s.completed);
+  const profileOpen = useProfileViewStore((s) => s.open);
+  const profileUserId = useProfileViewStore((s) => s.userId);
+  const closeProfile = useProfileViewStore((s) => s.close);
+  const openProfile = useProfileViewStore((s) => s.openProfile);
   const startOnboarding = useOnboardingStore((s) => s.start);
   const checkLauncherUpdate = useLauncherUpdateStore((s) => s.check);
   const checkUpdatesOnStart = useAppSettingsStore((s) => s.checkUpdatesOnStart);
@@ -100,7 +101,7 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
     if (action === 'play') {
       toast.success(`Приглашение отправлено ${friend.name}`);
     } else if (action === 'chat') {
-      openDmWith(String(friend.userId), friend.name);
+      openDmWith(friend.userId, friend.name);
     } else if (action === 'remove') {
       removeFriend(friend.userId);
       toast.info(`${friend.name} удалён из друзей`);
@@ -127,15 +128,10 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
 
       <FloatingTopBar connection={connection} />
       <IconRail activeTab={activeTab} onChange={setActiveTab} />
-      <PlayersRail
-        onOpenProfile={setActiveProfile}
-        onOpenContextMenu={setContextMenu}
-        onOpenAddFriend={() => setAddFriendOpen(true)}
-      />
       <CornerWidgets />
 
-      <div className="relative z-10 h-full overflow-y-auto vr-scroll">
-        <div className="float-center pt-28 pb-32">
+      <div className={`relative z-10 h-full ${activeTab === 'forum' ? 'overflow-hidden' : 'overflow-y-auto vr-scroll'}`}>
+        <div className={activeTab === 'forum' ? 'float-center-wide h-full pt-24 pb-24 flex flex-col' : 'float-center pt-28 pb-32'}>
           {activeTab === 'news' && (
             <div className="flex flex-col gap-6">
               <HeroSection />
@@ -144,16 +140,24 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
           )}
           {activeTab === 'events' && <EventsScreen />}
           {activeTab === 'mods' && <ModsScreen />}
-          {activeTab === 'account' && <AccountScreen />}
+          {activeTab === 'forum' && <ForumScreen />}
+          {activeTab === 'account' && <ProfileScreen userId={null} />}
         </div>
       </div>
 
-      <RightPanel onOpenFriendProfile={setActiveProfile} />
+      <RightPanel onOpenFriendProfile={(userId) => openProfile(userId)} />
 
+      <FriendsRail
+        onOpenProfile={(userId) => openProfile(userId)}
+        onOpenContextMenu={setContextMenu}
+        onOpenAddFriend={() => setAddFriendOpen(true)}
+      />
+      {profileOpen && (
+        <ProfileScreen userId={profileUserId} onClose={closeProfile} />
+      )}
       <FloatingStatusBar />
 
       <ChatPanel />
-      <FriendProfile friendId={activeProfileId} onClose={() => setActiveProfile(null)} />
       <FriendContextMenu
         state={contextMenu}
         onClose={() => setContextMenu(null)}
@@ -163,7 +167,6 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
       <NewsDetailModal item={openNews} onClose={() => setOpenNews(null)} />
 
       <Onboarding />
-      <LauncherUpdateModal />
     </div>
   );
 }

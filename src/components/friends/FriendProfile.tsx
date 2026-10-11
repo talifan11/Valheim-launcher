@@ -24,7 +24,7 @@ export function FriendProfile({ friendId, onClose }: Props) {
   };
 
   const handleChat = () => {
-    openDmWith(String(friend.userId), friend.name);
+    openDmWith(friend.userId, friend.name);
     onClose();
   };
 

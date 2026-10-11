@@ -102,6 +102,16 @@ button {
   margin-right: auto;
 }
 
+/* Широкий вариант для форума и профиля — использует всю доступную ширину */
+.float-center-wide {
+  width: 100%;
+  max-width: calc(100vw - 140px);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
 /* Боковые рейлы */
 .rail-left {
   position: absolute;
@@ -112,7 +122,7 @@ button {
 
 .rail-right {
   position: absolute;
-  right: 16px;
+  right: 20px;
   top: 88px;
   z-index: 30;
 }
@@ -280,4 +290,14 @@ body {
     radial-gradient(1100px 520px at 78% -10%, var(--theme-accent-tint), transparent 60%),
     radial-gradient(900px 600px at 12% 110%, var(--theme-accent-tint), transparent 65%),
     linear-gradient(180deg, var(--theme-bg-1) 0%, var(--theme-bg-2) 55%, var(--theme-bg-1) 100%);
+}
+
+
+/* Скрыть скроллбар, оставить скролл */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

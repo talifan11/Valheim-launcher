@@ -15,6 +15,7 @@ export interface Friend {
   activity?: string;
   lastSeenMinutes?: number;
   level?: number;
+  avatarUrl?: string | null;
 }
 
 interface FriendsState {
@@ -45,6 +46,7 @@ interface ApiUserWithOnline {
   user_id: number;
   username: string;
   online?: boolean;
+  avatar_url?: string | null;
 }
 
 function mapUser(u: ApiUserWithOnline): Friend {
@@ -54,6 +56,7 @@ function mapUser(u: ApiUserWithOnline): Friend {
     name: u.username,
     status: u.online ? 'online' : 'offline',
     lastSeenMinutes: undefined,
+    avatarUrl: u.avatar_url ?? null,
   };
 }
 
