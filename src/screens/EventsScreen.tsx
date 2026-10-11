@@ -1,240 +1,325 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Swords,
-  Trophy,
-  Users,
-  Map,
-  Clock,
-  Check,
-  UserPlus,
-  Flame,
+  Calendar, Loader2, Plus, RefreshCw, Search, X, AlertCircle,
+  Swords, MessageCircle, Trophy, Hammer, Sparkles, Clock, MapPin, Users,
+  Check, LogOut, Trash2,
 } from 'lucide-react';
-import { useEventsStore, type ServerEvent, type EventKind } from '../store/useEventsStore';
+import { useEventsStore } from '../store/useEventsStore';
+import { useLauncherStore } from '../store/useLauncherStore';
+import { Avatar } from '../components/ui/Avatar';
+import { EventCreateModal } from '../components/events/EventCreateModal';
 import { toast } from '../store/useToastStore';
 
-const KIND_ICON: Record<EventKind, typeof Swords> = {
-  raid: Swords,
-  tournament: Trophy,
-  meetup: Users,
-  quest: Map,
+const CATEGORY_META: Record<string, { label: string; icon: typeof Swords; cls: string }> = {
+  raid:       { label: 'Рейд',            icon: Swords,        cls: 'text-blood bg-blood/10 border-blood/25' },
+  meeting:    { label: 'Встреча',         icon: MessageCircle, cls: 'text-blizzard bg-blizzard/10 border-blizzard/25' },
+  tournament: { label: 'Турнир',          icon: Trophy,        cls: 'text-gold bg-gold/10 border-gold/25' },
+  build:      { label: 'Строительство',   icon: Hammer,        cls: 'text-emerald bg-emerald/10 border-emerald/25' },
+  other:      { label: 'Другое',          icon: Sparkles,      cls: 'text-slate-400 bg-white/5 border-white/10' },
 };
 
-const KIND_COLOR: Record<EventKind, string> = {
-  raid: 'text-blood border-blood/30 bg-blood/10',
-  tournament: 'text-gold border-gold/30 bg-gold/10',
-  meetup: 'text-blizzard border-blizzard/30 bg-blizzard/10',
-  quest: 'text-emerald border-emerald/30 bg-emerald/10',
-};
+function fmtDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('ru-RU', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return iso; }
+}
 
-const KIND_LABEL: Record<EventKind, string> = {
-  raid: 'Рейд',
-  tournament: 'Турнир',
-  meetup: 'Сбор',
-  quest: 'Квест',
-};
+function isPast(iso: string): boolean {
+  return new Date(iso).getTime() < Date.now();
+}
 
 export function EventsScreen() {
   const events = useEventsStore((s) => s.events);
-  const join = useEventsStore((s) => s.join);
-  const leave = useEventsStore((s) => s.leave);
-  const now = Date.now();
-  const upcoming = events
-    .filter((e) => e.startsAt + e.durationMinutes * 60_000 > now)
-    .sort((a, b) => a.startsAt - b.startsAt);
-  const past = events
-    .filter((e) => e.startsAt + e.durationMinutes * 60_000 <= now)
-    .sort((a, b) => b.startsAt - a.startsAt);
+  const loading = useEventsStore((s) => s.loading);
+  const error = useEventsStore((s) => s.error);
+  const busyId = useEventsStore((s) => s.busyId);
+  const loadEvents = useEventsStore((s) => s.loadEvents);
+  const joinEvent = useEventsStore((s) => s.joinEvent);
+  const leaveEvent = useEventsStore((s) => s.leaveEvent);
+  const deleteEvent = useEventsStore((s) => s.deleteEvent);
+  const myUserId = useLauncherStore((s) => s.userId);
 
-  const handleJoin = (e: ServerEvent) => {
-    if (e.joined) {
-      leave(e.id);
-      toast.info(`Вы вышли из «${e.title}»`);
-    } else {
-      join(e.id);
-      toast.success(`Вы записаны на «${e.title}»`);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'active' | 'past' | 'all'>('active');
+  const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => { void loadEvents(); }, [loadEvents]);
+
+  const filtered = useMemo(() => {
+    let list = events.slice();
+    if (filter === 'active') list = list.filter((e) => !isPast(e.starts_at));
+    if (filter === 'past') list = list.filter((e) => isPast(e.starts_at));
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(
+        (e) => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q),
+      );
     }
+    return list;
+  }, [events, filter, query]);
+
+  const counts = useMemo(() => ({
+    active: events.filter((e) => !isPast(e.starts_at)).length,
+    past: events.filter((e) => isPast(e.starts_at)).length,
+    all: events.length,
+  }), [events]);
+
+  const handleJoin = async (id: number) => {
+    await joinEvent(id);
+    toast.success('Вы записаны на событие');
   };
 
+  const handleLeave = async (id: number) => {
+    await leaveEvent(id);
+    toast.info('Вы отменили участие');
+  };
+
+  const handleDelete = async (ev: { id: number; title: string }) => {
+    if (!confirm(`Удалить событие?\n\n${ev.title}`)) return;
+    await deleteEvent(ev.id);
+    toast.info('Событие удалено');
+  };
+
+  const FILTERS: { id: typeof filter; label: string }[] = [
+    { id: 'active', label: 'Активные' },
+    { id: 'past', label: 'Прошедшие' },
+    { id: 'all', label: 'Все' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between px-1">
-        <h1 className="font-display text-2xl tracking-wide text-white">События сервера</h1>
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-          {upcoming.length} активных · {past.length} прошло
-        </span>
+    <div className="h-full flex flex-col">
+      <div className="px-8 pt-6 pb-4 shrink-0 flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-white flex items-center gap-3">
+            <Calendar size={22} className="text-gold" />
+            События
+          </h1>
+          <p className="text-[12px] text-slate-500 mt-1">
+            Рейды, встречи, турниры — создавай и участвуй
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadEvents(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-[11px] uppercase tracking-[0.12em] font-bold disabled:opacity-40"
+          >
+            {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gold text-abyss font-bold text-[11px] uppercase tracking-[0.14em] hover:shadow-glow-gold transition-all"
+          >
+            <Plus size={14} />
+            Создать событие
+          </button>
+        </div>
       </div>
 
-      {/* Активные события */}
-      <div className="space-y-3">
-        {upcoming.map((event) => (
-          <EventCard key={event.id} event={event} onToggle={() => handleJoin(event)} />
-        ))}
-      </div>
-
-      {/* История */}
-      {past.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-display text-base tracking-wide text-slate-500 uppercase mt-6 px-1">
-            Прошедшие
-          </h2>
-          {past.map((event) => (
-            <EventCard key={event.id} event={event} onToggle={() => handleJoin(event)} isPast />
+      {/* Toolbar */}
+      <div className="px-8 mb-4 shrink-0 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-0.5 border-b border-white/[0.06]">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              className={`relative px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
+                filter === f.id ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {f.label}
+              <span className="ml-1.5 text-[10px] font-mono text-slate-600">{counts[f.id]}</span>
+              {filter === f.id && (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gold rounded-t" />
+              )}
+            </button>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
 
-function EventCard({
-  event,
-  onToggle,
-  isPast = false,
-}: {
-  event: ServerEvent;
-  onToggle: () => void;
-  isPast?: boolean;
-}) {
-  const Icon = KIND_ICON[event.kind];
-  const kindClass = KIND_COLOR[event.kind];
-
-  const now = Date.now();
-  const isLive =
-    now >= event.startsAt && now < event.startsAt + event.durationMinutes * 60_000;
-
-  const startDate = new Date(event.startsAt);
-  const dateText = formatEventDate(startDate, now);
-  const endTime = new Date(event.startsAt + event.durationMinutes * 60_000);
-
-  const full = event.maxParticipants > 0 && event.participants >= event.maxParticipants;
-
-  return (
-    <div
-      className={`glass rounded-[20px] p-5 flex gap-5 items-start transition-all hover:border-white/15 ${
-        isPast ? 'opacity-70' : ''
-      }`}
-    >
-      {/* Иконка типа */}
-      <div
-        className={`w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 ${kindClass}`}
-      >
-        <Icon size={24} />
+        <div className="ml-auto relative w-72">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск событий..."
+            className="w-full bg-white/[0.02] border border-white/[0.06] rounded-xl pl-8 pr-8 py-2 text-[12px] text-slate-200 placeholder-slate-600 outline-none focus:border-gold/40 transition-colors"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/5"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Контент */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-          <span
-            className={`text-[10px] font-bold uppercase tracking-[0.15em] border rounded px-2 py-0.5 ${kindClass}`}
-          >
-            {KIND_LABEL[event.kind]}
-          </span>
-          {isLive && (
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-blood border border-blood/40 bg-blood/15 rounded px-2 py-0.5 inline-flex items-center gap-1">
-              <Flame size={10} />
-              Идёт сейчас
-            </span>
-          )}
-          {isPast && (
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 border border-white/10 rounded px-2 py-0.5">
-              Прошло
-            </span>
-          )}
+      {error && (
+        <div className="mx-8 mb-4 flex items-start gap-2 rounded-xl border border-blood/30 bg-blood/5 p-3 text-blood text-[12px] shrink-0">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
         </div>
+      )}
 
-        <h3 className="font-display text-lg font-semibold text-white leading-snug">
-          {event.title}
-        </h3>
-        <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-          {event.description}
-        </p>
+      {/* List */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-8">
+        {loading && events.length === 0 ? (
+          <div className="flex items-center justify-center py-20 text-slate-500">
+            <Loader2 size={20} className="animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="glass rounded-2xl py-16 text-center max-w-4xl">
+            <Calendar size={28} className="mx-auto text-slate-700 mb-3" />
+            <p className="text-[13px] text-slate-400 font-semibold">
+              {query ? 'Ничего не найдено' : 'Событий пока нет'}
+            </p>
+            <p className="text-[11px] text-slate-600 mt-1">
+              {query ? 'Попробуй другой запрос' : 'Стань первым — создай своё событие'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-w-4xl">
+            {filtered.map((ev) => {
+              const meta = CATEGORY_META[ev.category] ?? CATEGORY_META.other;
+              const Icon = meta.icon;
+              const past = isPast(ev.starts_at);
+              const isFull = ev.max_slots !== null && ev.participants_count >= ev.max_slots;
+              const isAuthor = ev.author_id === myUserId;
 
-        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-500 flex-wrap">
-          <span className="flex items-center gap-1.5">
-            <Clock size={12} />
-            {dateText}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Users size={12} />
-            {event.participants}
-            {event.maxParticipants > 0 ? ` / ${event.maxParticipants}` : ''}
-          </span>
-          <span className="flex items-center gap-1.5">
-            Длительность: {formatDuration(event.durationMinutes)}
-          </span>
-        </div>
+              return (
+                <div
+                  key={ev.id}
+                  className={`glass rounded-2xl p-5 transition-all ${
+                    past ? 'opacity-60' : 'hover:border-white/[0.12]'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`shrink-0 w-12 h-12 rounded-xl ring-1 ring-inset flex items-center justify-center ${meta.cls}`}>
+                      <Icon size={20} strokeWidth={2.2} />
+                    </div>
 
-        {event.reward && (
-          <div className="mt-3 text-[11px] text-gold bg-gold/5 border border-gold/20 rounded-lg px-3 py-1.5 inline-flex items-center gap-1.5">
-            <Trophy size={11} />
-            {event.reward}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${meta.cls}`}>
+                          {meta.label}
+                        </span>
+                        {past && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                            Прошло
+                          </span>
+                        )}
+                        {isFull && !past && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blood bg-blood/10 border border-blood/25 px-2 py-0.5 rounded">
+                            Мест нет
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="font-display text-[17px] font-bold text-white leading-snug">
+                        {ev.title}
+                      </h3>
+                      <p className="text-[13px] text-slate-300 leading-relaxed mt-2 whitespace-pre-wrap break-words">
+                        {ev.description}
+                      </p>
+
+                      <div className="flex items-center gap-4 mt-3 flex-wrap text-[11px] text-slate-500">
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={11} />
+                          {fmtDate(ev.starts_at)}
+                        </span>
+                        {ev.location && (
+                          <span className="flex items-center gap-1.5">
+                            <MapPin size={11} />
+                            {ev.location}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5">
+                          <Users size={11} />
+                          {ev.participants_count}
+                          {ev.max_slots ? ` / ${ev.max_slots}` : ''}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-4 pt-3 border-t border-white/[0.04]">
+                        <Avatar
+                          size={22}
+                          avatarUrl={ev.author.avatar_url}
+                          friendId={`u-${ev.author.user_id}`}
+                        />
+                        <span className="text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-400">{ev.author.username}</span>
+                        </span>
+
+                        {ev.participants.length > 1 && (
+                          <div className="flex items-center -space-x-1.5 ml-2">
+                            {ev.participants.slice(0, 6).map((p) => (
+                              <div key={p.user_id} className="ring-2 ring-[#0a0e14] rounded-full">
+                                <Avatar size={22} avatarUrl={p.avatar_url} friendId={`u-${p.user_id}`} />
+                              </div>
+                            ))}
+                            {ev.participants.length > 6 && (
+                              <span className="ml-2 text-[10px] text-slate-600 font-mono">
+                                +{ev.participants.length - 6}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="ml-auto flex items-center gap-2">
+                          {isAuthor && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(ev)}
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-blood hover:bg-blood/10 transition-colors"
+                              title="Удалить событие"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+
+                          {!past && (
+                            ev.joined ? (
+                              <button
+                                type="button"
+                                onClick={() => handleLeave(ev.id)}
+                                disabled={busyId === ev.id}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald/30 text-emerald hover:bg-emerald/10 transition-colors text-[11px] font-bold uppercase tracking-wider disabled:opacity-40"
+                              >
+                                {busyId === ev.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                Вы записаны
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleJoin(ev.id)}
+                                disabled={busyId === ev.id || isFull}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold text-abyss font-bold text-[11px] uppercase tracking-wider hover:shadow-glow-gold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {busyId === ev.id ? <Loader2 size={12} className="animate-spin" /> : <LogOut size={12} />}
+                                {isFull ? 'Мест нет' : 'Присоединиться'}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-
-        <div className="text-[10px] text-slate-600 mt-2 font-mono">
-          Окончание: {endTime.toLocaleString('ru-RU', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </div>
       </div>
 
-      {/* Кнопка */}
-      {!isPast && (
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={full && !event.joined}
-          className={`shrink-0 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-[0.12em] transition-all inline-flex items-center gap-2 ${
-            event.joined
-              ? 'bg-emerald/15 border border-emerald/40 text-emerald hover:bg-emerald/25'
-              : full
-                ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                : 'bg-gold text-abyss hover:shadow-glow-gold'
-          }`}
-        >
-          {event.joined ? (
-            <>
-              <Check size={14} />
-              Вы записаны
-            </>
-          ) : full ? (
-            'Мест нет'
-          ) : (
-            <>
-              <UserPlus size={14} />
-              Участвовать
-            </>
-          )}
-        </button>
-      )}
+      <EventCreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
-}
-
-function formatEventDate(date: Date, now: number): string {
-  const diff = date.getTime() - now;
-  const hours = Math.floor(diff / 3600_000);
-  const days = Math.floor(hours / 24);
-
-  const timeStr = date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  if (diff < 0) return `Начало: ${timeStr}`;
-  if (hours < 1) return `Через ${Math.floor(diff / 60_000)} мин · ${timeStr}`;
-  if (hours < 24) return `Через ${hours} ч · ${timeStr}`;
-  return `Через ${days} д · ${timeStr}`;
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} мин`;
-  const h = Math.floor(minutes / 60);
-  if (h < 24) return `${h} ч`;
-  const d = Math.floor(h / 24);
-  return `${d} д`;
 }

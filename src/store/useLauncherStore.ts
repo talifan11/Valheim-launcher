@@ -32,6 +32,8 @@ interface LauncherState {
   authToken: string | null;
   /** Email авторизованного пользователя */
   userEmail: string | null;
+  /** ID авторизованного пользователя */
+  userId: number | null;
   /** Выход: возврат к экрану входа */
   logout: () => void;
   /** Изменить кусок конфига и сразу сохранить на диск */
@@ -47,6 +49,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
   isAuthenticated: false,
   authToken: null,
   userEmail: null,
+  userId: null,
   isLaunching: false,
   errorMessage: null,
   settingsOpen: false,
@@ -73,7 +76,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
 
   logout: () => {
     useProfileStore.getState().setAvatarUrl(null);
-    set({ isAuthenticated: false, authToken: null, userEmail: null });
+    set({ isAuthenticated: false, authToken: null, userEmail: null, userId: null });
   },
 
   updateConfig: async (patch: Partial<LauncherConfig>) => {
@@ -127,6 +130,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       isAuthenticated: true,
       authToken: result.token,
       userEmail: result.email,
+      userId: result.user_id,
       config: { ...get().config, username: result.username },
     });
     await get().updateConfig({ username: result.username });
@@ -141,6 +145,7 @@ export const useLauncherStore = create<LauncherState>((set, get) => ({
       isAuthenticated: true,
       authToken: result.token,
       userEmail: result.email,
+      userId: result.user_id,
       config: { ...get().config, username: result.username },
     });
     await get().updateConfig({ username: result.username });

@@ -13,6 +13,7 @@ import { useAppSettingsStore } from './store/useAppSettingsStore';
 import { useFriendsStore } from './store/useFriendsStore';
 import { useNewsStore } from './store/useNewsStore';
 import { useChangelogStore } from './store/useChangelogStore';
+import { useEventsStore } from './store/useEventsStore';
 import { DEV_SKIP_UPDATE } from './config';
 import type { ConnectionState } from './components/layout/FloatingTopBar';
 
@@ -30,6 +31,7 @@ export default function App() {
   const startFriendsPolling = useFriendsStore((s) => s.startPolling);
   const loadNews = useNewsStore((s) => s.loadNews);
   const loadChangelog = useChangelogStore((s) => s.loadChangelog);
+  const loadEvents = useEventsStore((s) => s.loadEvents);
   const authToken = useLauncherStore((s) => s.authToken);
 
   // Heartbeat: раз в 30 секунд сообщаем серверу что мы онлайн
@@ -64,10 +66,12 @@ export default function App() {
   useEffect(() => {
     void loadNews();
     void loadChangelog();
+    void loadEvents();
 
     const onFocus = () => {
       void loadNews(true);
       void loadChangelog(true);
+      void loadEvents(true);
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', () => {
@@ -76,7 +80,7 @@ export default function App() {
     return () => {
       window.removeEventListener('focus', onFocus);
     };
-  }, [loadNews, loadChangelog]);
+  }, [loadNews, loadChangelog, loadEvents]);
 
   useEffect(() => {
     // В dev-режиме проверку обновлений не запускаем.
