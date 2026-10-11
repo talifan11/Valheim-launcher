@@ -603,3 +603,21 @@ export async function getNews(): Promise<ApiNewsItem[]> {
   if (!res.ok) throw new Error(`Ошибка новостей: ${res.status}`);
   return res.json();
 }
+
+
+// CHANGELOG
+export interface ApiChangelogEntry {
+  id: number;
+  version: string | null;
+  title: string;
+  body: string;
+  category: string;
+  created_at: string;
+  author: { username: string; avatar_url: string | null } | null;
+}
+
+export async function getChangelog(): Promise<ApiChangelogEntry[]> {
+  const res = await fetch(`${API_BASE}/changelog`);
+  if (!res.ok) throw new Error(`Ошибка changelog: ${res.status}`);
+  return res.json();
+}

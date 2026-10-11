@@ -12,6 +12,7 @@ import { useUpdateStore } from './store/useUpdateStore';
 import { useAppSettingsStore } from './store/useAppSettingsStore';
 import { useFriendsStore } from './store/useFriendsStore';
 import { useNewsStore } from './store/useNewsStore';
+import { useChangelogStore } from './store/useChangelogStore';
 import { DEV_SKIP_UPDATE } from './config';
 import type { ConnectionState } from './components/layout/FloatingTopBar';
 
@@ -28,6 +29,7 @@ export default function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking');
   const startFriendsPolling = useFriendsStore((s) => s.startPolling);
   const loadNews = useNewsStore((s) => s.loadNews);
+  const loadChangelog = useChangelogStore((s) => s.loadChangelog);
   const authToken = useLauncherStore((s) => s.authToken);
 
   // Heartbeat: раз в 30 секунд сообщаем серверу что мы онлайн
@@ -61,9 +63,11 @@ export default function App() {
   // Загрузка новостей при старте + при возврате фокуса в окно
   useEffect(() => {
     void loadNews();
+    void loadChangelog();
 
     const onFocus = () => {
-      void loadNews(true); // force = true, игнорируем кэш
+      void loadNews(true);
+      void loadChangelog(true);
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', () => {
@@ -72,7 +76,7 @@ export default function App() {
     return () => {
       window.removeEventListener('focus', onFocus);
     };
-  }, [loadNews]);
+  }, [loadNews, loadChangelog]);
 
   useEffect(() => {
     // В dev-режиме проверку обновлений не запускаем.

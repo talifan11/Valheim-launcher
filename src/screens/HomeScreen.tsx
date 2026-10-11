@@ -14,6 +14,7 @@ import { RightPanel } from '../components/rightpanel/RightPanel';
 import { FriendsRail } from '../components/layout/FriendsRail';
 import { Onboarding } from '../components/onboarding/Onboarding';
 import { ProfileScreen } from './ProfileScreen';
+import { ChangelogScreen } from './ChangelogScreen';
 import { ForumScreen } from './ForumScreen';
 import { EventsScreen } from './EventsScreen';
 import { ModsScreen } from './ModsScreen';
@@ -141,6 +142,7 @@ export function HomeScreen({ connection, onConnectionChange }: Props) {
           {activeTab === 'events' && <EventsScreen />}
           {activeTab === 'mods' && <ModsScreen />}
           {activeTab === 'forum' && <ForumScreen />}
+          {activeTab === 'changelog' && <ChangelogScreen />}
           {activeTab === 'account' && <ProfileScreen userId={null} />}
         </div>
       </div>
